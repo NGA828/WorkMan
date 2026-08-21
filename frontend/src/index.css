@@ -1,2 +1,322 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
-:root{--ink:#17283d;--muted:#71808b;--cream:#fbf9f3;--lime:#d7ef74;--coral:#ef765e;--peach:#f3c9b5;--line:#e2ded5;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--cream);font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px}button,input{font:inherit}::selection{background:var(--lime);color:var(--ink)}
+
+/* ------------------------------------------------------------------ tokens */
+:root {
+  --ink: #17283d;
+  --ink-soft: #22344d;
+  --muted: #71808b;
+  --cream: #fbf9f3;
+  --panel: #fffdf8;
+  --lime: #d7ef74;
+  --coral: #ef765e;
+  --peach: #f3c9b5;
+  --line: #e2ded5;
+  --green: #79b94b;
+  --green-soft: #eaf4df;
+  --red: #b64c3c;
+  --red-soft: #fdeeea;
+  --gold: #d8a04e;
+  --gold-soft: #faf1df;
+  --blue: #4d7ec9;
+  --blue-soft: #e8f0fb;
+  --sidebar: #152136;
+  --sidebar-text: #93a1b5;
+  --radius: 16px;
+  --shadow: 0 12px 32px rgba(23, 40, 61, 0.08);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--ink);
+  background: var(--cream);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  color: var(--ink);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+em {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--coral);
+  letter-spacing: -0.02em;
+}
+
+/* ------------------------------------------------------------------ buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  padding: 11px 18px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(23, 40, 61, 0.12);
+}
+
+.btn-dark {
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn-dark:hover:not(:disabled) {
+  background: var(--ink-soft);
+}
+
+.btn-lime {
+  background: var(--lime);
+  color: var(--ink);
+}
+
+.btn-outline {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.btn-danger {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.btn-sm {
+  padding: 8px 13px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--ink);
+  background: rgba(23, 40, 61, 0.05);
+  box-shadow: none;
+}
+
+/* -------------------------------------------------------------------- forms */
+.field {
+  display: grid;
+  gap: 7px;
+  text-align: left;
+}
+
+.field label,
+.field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 13px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+  outline: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--coral);
+  box-shadow: 0 0 0 3px rgba(239, 118, 94, 0.12);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+/* -------------------------------------------------------------------- cards */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ------------------------------------------------------------------- badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.badge-green {
+  background: var(--green-soft);
+  color: #4c7d2c;
+}
+
+.badge-gold {
+  background: var(--gold-soft);
+  color: #8a6223;
+}
+
+.badge-red {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.badge-blue {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.badge-grey {
+  background: rgba(113, 128, 139, 0.12);
+  color: var(--muted);
+}
+
+.badge-dark {
+  background: var(--ink);
+  color: #fff;
+}
+
+.badge-lime {
+  background: #eef7cd;
+  color: #5c7a15;
+}
+
+/* ------------------------------------------------------------------ helpers */
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  font-weight: 800;
+  color: var(--coral);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-transform: uppercase;
+}
+
+.eyebrow-line {
+  width: 28px;
+  height: 2px;
+  background: var(--coral);
+}
+
+.form-error {
+  font-size: 12px;
+  color: var(--red);
+  background: var(--red-soft);
+  padding: 10px 13px;
+  border-radius: 10px;
+}
+
+.success-message {
+  font-size: 12px;
+  color: #4c7d2c;
+  background: var(--green-soft);
+  padding: 10px 13px;
+  border-radius: 10px;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border: 3px solid rgba(23, 40, 61, 0.15);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.page-loader {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter {
+  animation: pageIn 0.45s ease both;
+}

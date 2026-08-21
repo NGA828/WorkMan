@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# WorkMan mock API state (preview mode without PHP)
+dev/.mock-state.json

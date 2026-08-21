@@ -1,1 +1,15 @@
-.site-shell{overflow:hidden;animation:pageIn .7s ease both}.api-status{position:fixed;bottom:16px;right:16px;background:#fffdf8;border:1px solid var(--line);box-shadow:0 7px 22px #17283d14;border-radius:30px;padding:8px 12px;font-size:10px;color:var(--muted);z-index:10}.api-status span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#d8a04e;margin-right:3px}.api-status.online span{background:#79b94b}@keyframes pageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.site-shell {
+  overflow: hidden;
+  animation: pageIn 0.7s ease both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
