@@ -15,6 +15,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
+            'role' => ['required', 'in:client,provider'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
@@ -55,6 +56,6 @@ class AuthController extends Controller
 
     private function response(User $user, string $token, int $status = 200): JsonResponse
     {
-        return response()->json(['user' => $user->only(['id', 'name', 'email']), 'token' => $token], $status);
+        return response()->json(['user' => $user->only(['id', 'name', 'role', 'email']), 'token' => $token], $status);
     }
 }
