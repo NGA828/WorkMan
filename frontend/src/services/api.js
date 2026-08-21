@@ -14,13 +14,37 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/me']
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && window.location.pathname !== '/login') {
+    const { response, config } = error
+
+    // Only session-expiry (401) responses are handled here.
+    if (!response || response.status !== 401) return Promise.reject(error)
+
+    const url = config?.url || ''
+
+    // Auth endpoints manage their own errors:
+    // - login/register show a form error in AuthPage
+    // - /auth/me failures are handled by AuthContext.refresh
+    // Handling them here could wipe a freshly issued token when a stale
+    // in-flight request (sent with an old token) fails after re-login.
+    if (AUTH_ENDPOINTS.some((endpoint) => url.startsWith(endpoint))) {
+      return Promise.reject(error)
+    }
+
+    // Redirect to the login page only if we were actually signed in and
+    // are not already there — this avoids redirect loops on public pages.
+    const onAuthPage =
+      window.location.pathname === '/login' || window.location.pathname === '/register'
+
+    if (!onAuthPage && localStorage.getItem('workman_token')) {
       localStorage.removeItem('workman_token')
       window.location.href = '/login'
     }
+
     return Promise.reject(error)
   }
 )

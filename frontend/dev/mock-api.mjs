@@ -501,7 +501,11 @@ const server = createServer((req, res) => {
   })
   req.on('end', () => {
     const payload = readJson(body)
+    const user = authUser(req)
     handle(path, url, req, res, payload)
+    console.log(
+      `[mock-api] ${req.method} ${path || '/'} -> ${res.statusCode}${user ? ` (user ${user.id}: ${user.email})` : ' (anonymous)'}`
+    )
   })
 })
 

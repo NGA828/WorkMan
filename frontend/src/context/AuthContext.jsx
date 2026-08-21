@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { getMe, login as apiLogin, logout as apiLogout, register as apiRegister } from '../services/api'
 
 const AuthContext = createContext(null)
@@ -8,6 +8,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Bumped on every login / register / logout. A refresh that started before
+  // a session change must not apply its (now stale) result afterwards —
+  // otherwise a late /auth/me failure could log out a user who just logged in.
+  const sessionVersion = useRef(0)
+
   const refresh = useCallback(async () => {
     const token = localStorage.getItem('workman_token')
     if (!token) {
@@ -15,14 +20,19 @@ export function AuthProvider({ children }) {
       setLoading(false)
       return
     }
+
+    const version = sessionVersion.current
+
     try {
       const { data } = await getMe()
-      setUser(data.user)
+      if (version === sessionVersion.current) setUser(data.user)
     } catch {
-      localStorage.removeItem('workman_token')
-      setUser(null)
+      if (version === sessionVersion.current) {
+        localStorage.removeItem('workman_token')
+        setUser(null)
+      }
     } finally {
-      setLoading(false)
+      if (version === sessionVersion.current) setLoading(false)
     }
   }, [])
 
@@ -32,6 +42,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (credentials) => {
     const { data } = await apiLogin(credentials)
+    sessionVersion.current += 1
     localStorage.setItem('workman_token', data.token)
     setUser(data.user)
     return data.user
@@ -39,6 +50,7 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (details) => {
     const { data } = await apiRegister(details)
+    sessionVersion.current += 1
     localStorage.setItem('workman_token', data.token)
     setUser(data.user)
     return data.user
@@ -50,6 +62,7 @@ export function AuthProvider({ children }) {
     } catch {
       // Token may already be invalid — clear locally regardless.
     }
+    sessionVersion.current += 1
     localStorage.removeItem('workman_token')
     setUser(null)
   }, [])
