@@ -3,6 +3,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\MessagingController;
 use App\Http\Controllers\Api\ServiceCategoryController;
 use App\Http\Controllers\Api\TechnicianDiscoveryController;
@@ -13,6 +14,8 @@ Route::post('/auth/register', [AuthController::class, 'register']); Route::post(
 Route::middleware(['auth.api','throttle:api'])->group(function () {
  Route::get('/auth/me', [AuthController::class, 'me']); Route::post('/auth/logout', [AuthController::class, 'logout']); Route::get('/profile', [ProfileController::class, 'show']); Route::put('/profile', [ProfileController::class, 'update']);
  Route::get('/bookings', [BookingController::class, 'index']);
+ Route::get('/payments', [PaymentController::class, 'index']);
+ Route::post('/payments', [PaymentController::class, 'store']);
  Route::get('/conversations', [MessagingController::class, 'conversations']);
  Route::post('/conversations', [MessagingController::class, 'create']);
  Route::get('/conversations/{conversation}/messages', [MessagingController::class, 'messages']);
