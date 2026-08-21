@@ -1,1 +1,2 @@
-/* App-level layout intentionally kept small; component styles live with their components. */
+/* App-level styles are intentionally minimal.
+   The design system lives in index.css; the dashboard shell has its own styles. */
