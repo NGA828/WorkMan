@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\ReviewController;
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\MessagingController;
 use App\Http\Controllers\Api\ServiceCategoryController;
 use App\Http\Controllers\Api\TechnicianDiscoveryController;
@@ -28,4 +29,5 @@ Route::middleware(['auth.api','throttle:api'])->group(function () {
  Route::post('/conversations/{conversation}/messages', [MessagingController::class, 'send']);
  Route::middleware('role:client')->group(function () { Route::post('/bookings', [BookingController::class, 'store']); Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']); Route::get('/favorites', [TechnicianDiscoveryController::class, 'favorites']); Route::post('/technicians/{technician}/favorite', [TechnicianDiscoveryController::class, 'favorite']); Route::delete('/technicians/{technician}/favorite', [TechnicianDiscoveryController::class, 'unfavorite']); });
  Route::middleware('role:provider')->group(function () { Route::get('/provider/services', [TechnicianServiceController::class, 'index']); Route::post('/provider/services', [TechnicianServiceController::class, 'store']); Route::delete('/provider/services/{service}', [TechnicianServiceController::class, 'destroy']); Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus']); });
+ Route::prefix('admin')->middleware('role:admin')->group(function () { Route::get('/summary', [AdminController::class, 'summary']); Route::get('/users', [AdminController::class, 'users']); Route::get('/technicians', [AdminController::class, 'technicians']); Route::patch('/technicians/{technician}/verification', [AdminController::class, 'verify']); Route::get('/categories', [AdminController::class, 'categories']); Route::post('/categories', [AdminController::class, 'createCategory']); Route::patch('/categories/{category}', [AdminController::class, 'updateCategory']); Route::get('/reviews', [AdminController::class, 'reviews']); });
 });

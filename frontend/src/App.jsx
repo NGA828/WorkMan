@@ -7,6 +7,7 @@ import MessagesPage from './pages/MessagesPage/MessagesPage'
 import PaymentPage from './pages/PaymentPage/PaymentPage'
 import TrackingPage from './pages/TrackingPage/TrackingPage'
 import ReviewPage from './pages/ReviewPage/ReviewPage'
+import AdminPage from './pages/AdminPage/AdminPage'
 import './App.css'
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
   if (path === '/payments') return <PaymentPage />
   if (path === '/tracking') return <TrackingPage />
   if (path === '/review') return <ReviewPage />
+  if (path === '/admin') return <AdminPage />
   return <LandingPage />
 }
 
