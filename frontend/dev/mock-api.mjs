@@ -24,7 +24,7 @@ const PORT = Number(process.env.MOCK_API_PORT || 8000)
 
 /* ------------------------------------------------------------------- utils */
 
-let seq = { user: 0, category: 0, technician: 0, service: 0, location: 0, hour: 0, booking: 0, payment: 0, conversation: 0, message: 0, notification: 0, clientProfile: 0 }
+let seq = { user: 0, category: 0, technician: 0, service: 0, location: 0, hour: 0, booking: 0, payment: 0, conversation: 0, message: 0, notification: 0, clientProfile: 0, report: 0 }
 
 const nextId = (table) => (seq[table] += 1)
 const now = () => new Date().toISOString()
@@ -70,7 +70,7 @@ function seed(db) {
 
   const makeUser = (name, role, email) => {
     const id = nextId('user')
-    db.users.push({ id, name, role, email, password, created_at: now(), updated_at: now() })
+    db.users.push({ id, name, role, email, password, is_active: true, created_at: now(), updated_at: now() })
     return id
   }
 
@@ -84,6 +84,7 @@ function seed(db) {
       years_experience: years,
       phone,
       avatar_path: null,
+      id_document_path: null,
       verification_status: status,
       is_available: available,
       average_rating: 0,
@@ -197,13 +198,13 @@ function seed(db) {
   }
 
   // Users
-  const adminId = makeUser('Admin User', 'admin', 'admin@workman.local')
+  makeUser('Admin User', 'admin', 'admin@workman.local')
   const awaId = makeUser('Awa Diallo', 'client', 'client@workman.local')
   const jeanId = makeUser('Jean Mbarga', 'client', 'jean@workman.local')
 
   db.clientProfiles.push(
-    { id: 1, user_id: awaId, phone: '+237 655 12 34 56', address: 'Rue Joffre, Akwa', city: 'Douala', avatar_path: null, created_at: now(), updated_at: now() },
-    { id: 2, user_id: jeanId, phone: '+237 677 98 76 54', address: 'Boulevard de la Liberté', city: 'Douala', avatar_path: null, created_at: now(), updated_at: now() }
+    { id: 1, user_id: awaId, phone: '+237 655 12 34 56', address: 'Rue Joffre, Akwa', city: 'Douala', avatar_path: null, id_document_path: null, id_document_status: null, created_at: now(), updated_at: now() },
+    { id: 2, user_id: jeanId, phone: '+237 677 98 76 54', address: 'Boulevard de la Liberté', city: 'Douala', avatar_path: null, id_document_path: null, id_document_status: null, created_at: now(), updated_at: now() }
   )
 
   // Categories
@@ -359,6 +360,34 @@ function seed(db) {
   makeNotification(awaId, 'booking.done', 'The technician marked the work as finished. Please confirm completion.')
   makeNotification(db.technicians.find((item) => item.id === michael).user_id, 'payment.paid', 'Transport fee received for a booking.')
 
+  // Seed a couple of reports for admin demo
+  db.reports.push(
+    {
+      id: nextId('report'),
+      reporter_id: awaId,
+      reported_user_id: db.technicians.find((t) => t.id === 4)?.user_id || null,
+      type: 'no_show',
+      description: 'Technician did not show up for scheduled booking on time.',
+      status: 'open',
+      admin_notes: null,
+      resolved_at: null,
+      created_at: addDays(base, -1),
+      updated_at: addDays(base, -1),
+    },
+    {
+      id: nextId('report'),
+      reporter_id: jeanId,
+      reported_user_id: null,
+      type: 'payment_issue',
+      description: 'Transport fee was charged twice for booking #2.',
+      status: 'open',
+      admin_notes: null,
+      resolved_at: null,
+      created_at: addDays(base, -2),
+      updated_at: addDays(base, -2),
+    }
+  )
+
   db.seq = seq
   db.initialized = true
 }
@@ -370,6 +399,15 @@ function loadDb() {
       const db = JSON.parse(readFileSync(STATE_FILE, 'utf8'))
       if (db && db.initialized) {
         seq = db.seq
+        // Ensure new fields exist for older state files
+        if (!db.reports) db.reports = []
+        if (seq.report === undefined) seq.report = db.reports.length
+        db.users.forEach((u) => { if (u.is_active === undefined) u.is_active = true })
+        db.clientProfiles.forEach((p) => {
+          if (p.id_document_path === undefined) p.id_document_path = null
+          if (p.id_document_status === undefined) p.id_document_status = null
+        })
+        db.technicians.forEach((t) => { if (t.id_document_path === undefined) t.id_document_path = null })
         return db
       }
     } catch {
@@ -393,6 +431,7 @@ function loadDb() {
     conversations: [],
     messages: [],
     notifications: [],
+    reports: [],
     tokens: {},
   }
   seed(db)
@@ -413,7 +452,8 @@ const db = loadDb()
 /* ------------------------------------------------------------------- shapes */
 
 function userShape(user) {
-  return { id: user.id, name: user.name, role: user.role, email: user.email }
+  if (!user) return null
+  return { id: user.id, name: user.name, role: user.role, email: user.email, is_active: user.is_active !== false }
 }
 
 function categoryShape(category) {
@@ -442,6 +482,7 @@ function technicianShape(tech, { withHours = false } = {}) {
     years_experience: tech.years_experience,
     phone: tech.phone,
     avatar_path: tech.avatar_path,
+    id_document_path: tech.id_document_path || null,
     verification_status: tech.verification_status,
     is_available: tech.is_available,
     average_rating: tech.average_rating,
@@ -478,13 +519,25 @@ function bookingShape(booking) {
   }
 }
 
+function reportShape(report) {
+  const reporter = db.users.find((u) => u.id === report.reporter_id)
+  const reported = report.reported_user_id ? db.users.find((u) => u.id === report.reported_user_id) : null
+  return {
+    ...clone(report),
+    reporter: reporter ? { id: reporter.id, name: reporter.name, email: reporter.email, role: reporter.role } : null,
+    reported_user: reported ? { id: reported.id, name: reported.name, email: reported.email, role: reported.role } : null,
+  }
+}
+
 /* -------------------------------------------------------------------- auth */
 
 function authUser(req) {
   const header = req.headers.authorization || ''
   const token = header.replace(/^Bearer\s+/i, '')
   const userId = token ? db.tokens[token] : null
-  return userId ? db.users.find((item) => item.id === userId) : null
+  const user = userId ? db.users.find((item) => item.id === userId) : null
+  if (user && user.is_active === false) return null
+  return user || null
 }
 
 /* ----------------------------------------------------------------- routing */
@@ -500,16 +553,20 @@ const server = createServer((req, res) => {
     body += chunk
   })
   req.on('end', () => {
-    const payload = readJson(body)
+    // Handle multipart uploads (identity documents) by treating body as empty JSON
+    // and letting the handler create a fake path. The frontend sends FormData.
+    const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data')
+    const payload = isMultipart ? {} : readJson(body)
     const user = authUser(req)
-    handle(path, url, req, res, payload)
+    // Pass raw body and headers for handlers that need it
+    handle(path, url, req, res, payload, { rawBody: body, headers: req.headers })
     console.log(
       `[mock-api] ${req.method} ${path || '/'} -> ${res.statusCode}${user ? ` (user ${user.id}: ${user.email})` : ' (anonymous)'}`
     )
   })
 })
 
-function handle(path, url, req, res, payload) {
+function handle(path, url, req, res, payload, meta = {}) {
   const method = req.method
   const user = authUser(req)
   const userId = user?.id
@@ -589,6 +646,7 @@ function handle(path, url, req, res, payload) {
       role: data.role,
       email: data.email,
       password: data.password,
+      is_active: true,
       created_at: now(),
       updated_at: now(),
     }
@@ -603,6 +661,7 @@ function handle(path, url, req, res, payload) {
         years_experience: null,
         phone: data.phone || null,
         avatar_path: null,
+        id_document_path: null,
         verification_status: 'pending',
         is_available: true,
         average_rating: 0,
@@ -618,6 +677,8 @@ function handle(path, url, req, res, payload) {
         address: null,
         city: data.city || null,
         avatar_path: null,
+        id_document_path: null,
+        id_document_status: null,
         created_at: now(),
         updated_at: now(),
       })
@@ -633,6 +694,9 @@ function handle(path, url, req, res, payload) {
     const found = db.users.find((item) => item.email === payload.email)
     if (!found || found.password !== payload.password) {
       return fail(res, 422, 'Those details do not match our records.')
+    }
+    if (found.is_active === false) {
+      return fail(res, 403, 'Your account has been deactivated. Please contact support.')
     }
     const token = uuid()
     db.tokens[token] = found.id
@@ -685,6 +749,59 @@ function handle(path, url, req, res, payload) {
     }
     persist(db)
     return send(res, 200, { user: userShape(user), profile })
+  }
+
+  if (method === 'POST' && path === '/profile/identity') {
+    const fakePath = `identity-documents/${userId}-${Date.now()}.jpg`
+    if (user.role === 'provider') {
+      let profile = db.technicians.find((item) => item.user_id === userId)
+      if (!profile) {
+        profile = {
+          id: nextId('technician'),
+          user_id: userId,
+          bio: null,
+          years_experience: null,
+          phone: null,
+          avatar_path: null,
+          id_document_path: fakePath,
+          verification_status: 'pending',
+          is_available: true,
+          average_rating: 0,
+          reviews_count: 0,
+          created_at: now(),
+          updated_at: now(),
+        }
+        db.technicians.push(profile)
+      } else {
+        profile.id_document_path = fakePath
+        profile.updated_at = now()
+      }
+      persist(db)
+      return send(res, 200, { message: 'Document uploaded. It will be reviewed shortly.', profile })
+    } else {
+      let profile = db.clientProfiles.find((item) => item.user_id === userId)
+      if (!profile) {
+        profile = {
+          id: nextId('clientProfile'),
+          user_id: userId,
+          phone: null,
+          address: null,
+          city: null,
+          avatar_path: null,
+          id_document_path: fakePath,
+          id_document_status: 'pending',
+          created_at: now(),
+          updated_at: now(),
+        }
+        db.clientProfiles.push(profile)
+      } else {
+        profile.id_document_path = fakePath
+        profile.id_document_status = 'pending'
+        profile.updated_at = now()
+      }
+      persist(db)
+      return send(res, 200, { message: 'Document uploaded. It will be reviewed shortly.', profile })
+    }
   }
 
   if (method === 'GET' && path === '/notifications') {
@@ -841,6 +958,32 @@ function handle(path, url, req, res, payload) {
       persist(db)
       return send(res, 201, { message: { ...message, sender: userShape(user) } })
     }
+  }
+
+  /* reports - any authenticated user can submit */
+  if (method === 'POST' && path === '/reports') {
+    if (!payload.type || !payload.description) {
+      return fail(res, 422, 'The type and description fields are required.')
+    }
+    const validTypes = ['inappropriate_behavior', 'fake_profile', 'payment_issue', 'no_show', 'safety_concern', 'other']
+    if (!validTypes.includes(payload.type)) {
+      return fail(res, 422, 'Invalid report type.')
+    }
+    const report = {
+      id: nextId('report'),
+      reporter_id: userId,
+      reported_user_id: payload.reported_user_id ? Number(payload.reported_user_id) : null,
+      type: payload.type,
+      description: payload.description,
+      status: 'open',
+      admin_notes: null,
+      resolved_at: null,
+      created_at: now(),
+      updated_at: now(),
+    }
+    db.reports.push(report)
+    persist(db)
+    return send(res, 201, { report: reportShape(report) })
   }
 
   /* ---------------- client only ---------------- */
@@ -1287,11 +1430,33 @@ function handle(path, url, req, res, payload) {
     }
 
     if (method === 'GET' && path === '/admin/users') {
-      const users = db.users
-        .slice()
-        .sort((a, b) => b.created_at.localeCompare(a.created_at))
-        .map((item) => ({ id: item.id, name: item.name, email: item.email, role: item.role, created_at: item.created_at }))
-      return send(res, 200, { users: paginate(users) })
+      let users = db.users.slice()
+      const roleFilter = url.searchParams.get('role')
+      const q = url.searchParams.get('q')
+      if (roleFilter) users = users.filter((u) => u.role === roleFilter)
+      if (q) {
+        const lower = q.toLowerCase()
+        users = users.filter((u) => u.name.toLowerCase().includes(lower) || u.email.toLowerCase().includes(lower))
+      }
+      users.sort((a, b) => b.created_at.localeCompare(a.created_at))
+      const shaped = users.map((item) => ({ id: item.id, name: item.name, email: item.email, role: item.role, is_active: item.is_active !== false, created_at: item.created_at }))
+      return send(res, 200, { users: paginate(shaped) })
+    }
+
+    const userStatusMatch = path.match(/^\/admin\/users\/(\d+)\/status$/)
+    if (userStatusMatch && method === 'PATCH') {
+      const target = db.users.find((item) => item.id === Number(userStatusMatch[1]))
+      if (!target) return fail(res, 404, 'Not found.')
+      if (target.role === 'admin') {
+        return fail(res, 422, 'Administrator accounts cannot be deactivated.')
+      }
+      target.is_active = Boolean(payload.is_active)
+      target.updated_at = now()
+      persist(db)
+      return send(res, 200, {
+        message: target.is_active ? 'Account reactivated.' : 'Account deactivated.',
+        user: { id: target.id, name: target.name, email: target.email, role: target.role, is_active: target.is_active },
+      })
     }
 
     if (method === 'GET' && path === '/admin/technicians') {
@@ -1395,6 +1560,31 @@ function handle(path, url, req, res, payload) {
       refreshRatingFor(review.technician_profile_id)
       persist(db)
       return send(res, 200, { message: 'Review removed.' })
+    }
+
+    if (method === 'GET' && path === '/admin/reports') {
+      const reports = db.reports
+        .slice()
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .map(reportShape)
+      return send(res, 200, { reports: paginate(reports) })
+    }
+
+    const reportMatch = path.match(/^\/admin\/reports\/(\d+)$/)
+    if (reportMatch && method === 'PATCH') {
+      const report = db.reports.find((item) => item.id === Number(reportMatch[1]))
+      if (!report) return fail(res, 404, 'Not found.')
+      const validStatuses = ['open', 'under_review', 'resolved']
+      if (payload.status && !validStatuses.includes(payload.status)) {
+        return fail(res, 422, 'Invalid status.')
+      }
+      if ('status' in payload) report.status = payload.status
+      if ('admin_notes' in payload) report.admin_notes = payload.admin_notes
+      if (report.status === 'resolved') report.resolved_at = now()
+      else if (payload.status && payload.status !== 'resolved') report.resolved_at = null
+      report.updated_at = now()
+      persist(db)
+      return send(res, 200, { report: reportShape(report) })
     }
   }
 
