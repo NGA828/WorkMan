@@ -61,6 +61,10 @@ export const getMe = () => api.get('/auth/me')
 /* ------------------------------------------------------------------ profile */
 export const getProfile = () => api.get('/profile')
 export const updateProfile = (payload) => api.put('/profile', payload)
+export const uploadIdentityDocument = (formData) =>
+  api.post('/profile/identity', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 
 /* -------------------------------------------------------------- discovery */
 export const getCategories = () => api.get('/categories')
@@ -133,7 +137,9 @@ export const setProviderAvailability = (isAvailable) =>
 
 /* -------------------------------------------------------------------- admin */
 export const getAdminSummary = () => api.get('/admin/summary')
-export const getAdminUsers = () => api.get('/admin/users')
+export const getAdminUsers = (params) => api.get('/admin/users', { params })
+export const setUserStatus = (id, isActive) =>
+  api.patch(`/admin/users/${id}/status`, { is_active: isActive })
 export const getAdminTechnicians = (params) => api.get('/admin/technicians', { params })
 export const verifyTechnician = (id, verificationStatus) =>
   api.patch(`/admin/technicians/${id}/verification`, {
@@ -146,5 +152,10 @@ export const deleteCategory = (id) => api.delete(`/admin/categories/${id}`)
 export const getAdminBookings = () => api.get('/admin/bookings')
 export const getAdminReviews = () => api.get('/admin/reviews')
 export const deleteReview = (id) => api.delete(`/admin/reviews/${id}`)
+export const getAdminReports = () => api.get('/admin/reports')
+export const resolveReport = (id, payload) => api.patch(`/admin/reports/${id}`, payload)
+
+/* ------------------------------------------------------------------ reports */
+export const submitReport = (payload) => api.post('/reports', payload)
 
 export default api

@@ -18,6 +18,7 @@ const CLIENT_NAV = [
 const PROVIDER_NAV = [
   { to: '/dashboard', end: true, icon: 'home', label: 'Overview' },
   { to: '/dashboard/jobs', icon: 'briefcase', label: 'Job requests' },
+  { to: '/dashboard/history', icon: 'clock', label: 'Service history' },
   { to: '/dashboard/messages', icon: 'chat', label: 'Messages' },
   { to: '/dashboard/profile-setup', icon: 'wrench', label: 'My profile' },
 ]
@@ -29,6 +30,7 @@ const ADMIN_NAV = [
   { to: '/dashboard/categories', icon: 'grid', label: 'Categories' },
   { to: '/dashboard/platform-bookings', icon: 'calendar', label: 'Bookings' },
   { to: '/dashboard/reviews', icon: 'star', label: 'Reviews' },
+  { to: '/dashboard/reports', icon: 'bell', label: 'Reports & issues' },
 ]
 
 const TITLES = {
@@ -39,12 +41,14 @@ const TITLES = {
   '/dashboard/messages': { title: 'Messages', sub: 'Private conversations' },
   '/dashboard/settings': { title: 'Settings', sub: 'Your personal information' },
   '/dashboard/jobs': { title: 'Job requests', sub: 'Requests from clients' },
+  '/dashboard/history': { title: 'Service history', sub: 'Your completed and past jobs' },
   '/dashboard/profile-setup': { title: 'My professional profile', sub: 'What clients see about you' },
   '/dashboard/verification': { title: 'Technician verification', sub: 'Review and approve new technicians' },
   '/dashboard/users': { title: 'Users', sub: 'Everyone on the platform' },
   '/dashboard/categories': { title: 'Service categories', sub: 'The services clients can choose' },
   '/dashboard/platform-bookings': { title: 'Bookings', sub: 'Monitor platform activity' },
   '/dashboard/reviews': { title: 'Reviews', sub: 'Moderate ratings and comments' },
+  '/dashboard/reports': { title: 'Reports & issues', sub: 'Handle reported problems' },
 }
 
 function pageTitle(pathname) {

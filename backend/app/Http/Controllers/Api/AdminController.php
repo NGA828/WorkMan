@@ -31,12 +31,17 @@ class AdminController extends Controller
     }
 
     /**
-     * All registered users.
+     * All registered users, with optional role filter.
      */
-    public function users(): JsonResponse
+    public function users(Request $request): JsonResponse
     {
         $users = User::query()
-            ->select('id', 'name', 'email', 'role', 'created_at')
+            ->select('id', 'name', 'email', 'role', 'is_active', 'created_at')
+            ->when($request->query('role'), fn ($q, $role) => $q->where('role', $role))
+            ->when($request->query('q'), fn ($q, $search) => $q->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+            }))
             ->latest()
             ->paginate(25);
 
@@ -167,5 +172,27 @@ class AdminController extends Controller
         }
 
         return response()->json(['message' => 'Review removed.']);
+    }
+
+    /**
+     * Activate or deactivate a user account.
+     */
+    public function setUserStatus(Request $request, User $user): JsonResponse
+    {
+        $data = $request->validate([
+            'is_active' => ['required', 'boolean'],
+        ]);
+
+        // Prevent deactivating other admins.
+        if ($user->role === 'admin') {
+            return response()->json(['message' => 'Administrator accounts cannot be deactivated.'], 422);
+        }
+
+        $user->update(['is_active' => $data['is_active']]);
+
+        return response()->json([
+            'message' => $data['is_active'] ? 'Account reactivated.' : 'Account deactivated.',
+            'user'    => $user->only(['id', 'name', 'email', 'role', 'is_active']),
+        ]);
     }
 }

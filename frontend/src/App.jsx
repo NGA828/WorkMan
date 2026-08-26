@@ -5,6 +5,7 @@ import AuthPage from './pages/AuthPage/AuthPage'
 import AdminBookings from './pages/dashboard/AdminBookings'
 import AdminCategories from './pages/dashboard/AdminCategories'
 import AdminHome from './pages/dashboard/AdminHome'
+import AdminReports from './pages/dashboard/AdminReports'
 import AdminReviews from './pages/dashboard/AdminReviews'
 import AdminUsers from './pages/dashboard/AdminUsers'
 import AdminVerification from './pages/dashboard/AdminVerification'
@@ -13,6 +14,7 @@ import ClientHome from './pages/dashboard/ClientHome'
 import Discover from './pages/dashboard/Discover'
 import Favorites from './pages/dashboard/Favorites'
 import Messages from './pages/dashboard/Messages'
+import ProviderHistory from './pages/dashboard/ProviderHistory'
 import ProviderHome from './pages/dashboard/ProviderHome'
 import ProviderJobs from './pages/dashboard/ProviderJobs'
 import ProviderProfileSetup from './pages/dashboard/ProviderProfileSetup'
@@ -130,6 +132,14 @@ export default function App() {
           }
         />
         <Route
+          path="history"
+          element={
+            <RequireRole roles={['provider']}>
+              <ProviderHistory />
+            </RequireRole>
+          }
+        />
+        <Route
           path="profile-setup"
           element={
             <RequireRole roles={['provider']}>
@@ -194,6 +204,14 @@ export default function App() {
           element={
             <RequireRole roles={['admin']}>
               <AdminReviews />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <RequireRole roles={['admin']}>
+              <AdminReports />
             </RequireRole>
           }
         />

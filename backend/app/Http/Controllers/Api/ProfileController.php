@@ -7,6 +7,7 @@ use App\Models\ClientProfile;
 use App\Models\TechnicianProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -86,5 +87,39 @@ class ProfileController extends Controller
         );
 
         return response()->json(['profile' => $profile]);
+    }
+
+    /**
+     * Upload an identity document for verification.
+     * Accepts a single file upload for clients or technicians.
+     */
+    public function uploadIdentity(Request $request): JsonResponse
+    {
+        $request->validate([
+            'document' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        $path = $request->file('document')->store('identity-documents', 'public');
+
+        if ($user->role === 'provider') {
+            $profile = TechnicianProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                ['id_document_path' => $path]
+            );
+        } else {
+            $profile = ClientProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'id_document_path'   => $path,
+                    'id_document_status' => 'pending',
+                ]
+            );
+        }
+
+        return response()->json([
+            'message' => 'Document uploaded. It will be reviewed shortly.',
+            'profile' => $profile,
+        ]);
     }
 }

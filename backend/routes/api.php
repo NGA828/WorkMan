@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ProviderLocationController;
 use App\Http\Controllers\Api\ProviderWorkingHoursController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ServiceCategoryController;
 use App\Http\Controllers\Api\TechnicianDiscoveryController;
@@ -44,6 +45,10 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/identity', [ProfileController::class, 'uploadIdentity']);
+
+    // Reports — any authenticated user can submit; admin manages them
+    Route::post('/reports', [ReportController::class, 'store']);
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -113,6 +118,7 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
     Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::get('/summary', [AdminController::class, 'summary']);
         Route::get('/users', [AdminController::class, 'users']);
+        Route::patch('/users/{user}/status', [AdminController::class, 'setUserStatus']);
         Route::get('/technicians', [AdminController::class, 'technicians']);
         Route::patch('/technicians/{technician}/verification', [AdminController::class, 'verify']);
 
@@ -124,5 +130,8 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
         Route::get('/bookings', [AdminController::class, 'bookings']);
         Route::get('/reviews', [AdminController::class, 'reviews']);
         Route::delete('/reviews/{review}', [AdminController::class, 'destroyReview']);
+
+        Route::get('/reports', [ReportController::class, 'index']);
+        Route::patch('/reports/{report}', [ReportController::class, 'resolve']);
     });
 });

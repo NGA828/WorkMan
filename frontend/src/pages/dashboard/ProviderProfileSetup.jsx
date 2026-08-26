@@ -13,6 +13,7 @@ import {
   removeProviderService,
   updateProfile,
   updateProviderWorkingHours,
+  uploadIdentityDocument,
 } from '../../services/api'
 import { DAY_NAMES, formatCurrency } from '../../utils/format'
 import './dashboard-pages.css'
@@ -40,6 +41,11 @@ export default function ProviderProfileSetup() {
   const [hours, setHours] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadMsg, setUploadMsg] = useState('')
+  const [uploadErr, setUploadErr] = useState('')
 
   const [serviceForm, setServiceForm] = useState({ service_category_id: '', name: '', starting_price: '' })
   const [locationForm, setLocationForm] = useState({ city: '', neighborhood: '' })
@@ -168,6 +174,27 @@ export default function ProviderProfileSetup() {
     }
   }
 
+  const handleUploadId = async (event) => {
+    event.preventDefault()
+    if (!file) return
+    setUploading(true)
+    setUploadMsg('')
+    setUploadErr('')
+    const formData = new FormData()
+    formData.append('document', file)
+    try {
+      const { data } = await uploadIdentityDocument(formData)
+      setUploadMsg(data.message || 'ID uploaded successfully!')
+      setFile(null)
+      const profileRes = await getProfile()
+      setProfile(profileRes.data.profile || {})
+    } catch (err) {
+      setUploadErr(err.response?.data?.message || 'Unable to upload the ID document.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="page-loader">
@@ -227,6 +254,46 @@ export default function ProviderProfileSetup() {
             Save basics
           </button>
         </form>
+      </SectionCard>
+
+      <SectionCard
+        eyebrow="VERIFICATION DOCUMENTS"
+        title="Identity Verification"
+        subtitle="Submit your National ID card or Passport for platform review."
+      >
+        <div className="booking-notes" style={{ margin: '14px 0', background: 'var(--bg-soft)' }}>
+          {profile?.id_document_path ? (
+            <div>
+              <p style={{ fontSize: 13 }}>
+                ✓ Document uploaded: <code>{profile.id_document_path.split('/').pop()}</code>
+              </p>
+              <p style={{ fontSize: 12, marginTop: 4, color: 'var(--muted)' }}>
+                Verification Status: <b style={{ textTransform: 'capitalize' }}>{profile.verification_status}</b>
+              </p>
+            </div>
+          ) : (
+            <p style={{ fontSize: 13 }}>Please upload identity documents to start getting bookings.</p>
+          )}
+        </div>
+
+        {profile?.verification_status !== 'approved' && (
+          <form onSubmit={handleUploadId} style={{ display: 'grid', gap: 14 }}>
+            <div className="field">
+              <label>National ID or Passport photo (JPG, PNG, PDF up to 5MB)</label>
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.pdf"
+                onChange={(e) => e.target.files && setFile(e.target.files[0])}
+                required
+              />
+            </div>
+            {uploadMsg && <div className="success-message">{uploadMsg}</div>}
+            {uploadErr && <div className="form-error">{uploadErr}</div>}
+            <button className="btn btn-dark" disabled={uploading || !file} style={{ justifySelf: 'start' }}>
+              {uploading ? 'Uploading…' : 'Upload ID document'}
+            </button>
+          </form>
+        )}
       </SectionCard>
 
       <SectionCard

@@ -14,6 +14,7 @@ class TechnicianProfile extends Model
         'years_experience',
         'phone',
         'avatar_path',
+        'id_document_path',
         'verification_status',
         'average_rating',
         'reviews_count',
