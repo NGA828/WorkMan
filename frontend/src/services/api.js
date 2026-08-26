@@ -63,7 +63,10 @@ export const getProfile = () => api.get('/profile')
 export const updateProfile = (payload) => api.put('/profile', payload)
 export const uploadIdentityDocument = (formData) =>
   api.post('/profile/identity', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    // Let the browser set the multipart boundary automatically; explicitly
+    // setting Content-Type without a boundary breaks file uploads.
+    headers: { 'Content-Type': undefined },
+    transformRequest: [(data) => data],
   })
 
 /* -------------------------------------------------------------- discovery */

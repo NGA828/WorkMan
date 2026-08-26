@@ -82,6 +82,8 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
         Route::get('/favorites', [TechnicianDiscoveryController::class, 'favorites']);
         Route::post('/technicians/{technician}/favorite', [TechnicianDiscoveryController::class, 'favorite']);
         Route::delete('/technicians/{technician}/favorite', [TechnicianDiscoveryController::class, 'unfavorite']);
+
+        Route::post('/reviews', [ReviewController::class, 'store']);
     });
 
     /*

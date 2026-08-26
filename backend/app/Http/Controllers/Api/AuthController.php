@@ -77,6 +77,10 @@ class AuthController extends Controller
             return response()->json(['message' => 'Those details do not match our records.'], 422);
         }
 
+        if (isset($user->is_active) && !$user->is_active) {
+            return response()->json(['message' => 'Your account has been deactivated. Please contact support.'], 403);
+        }
+
         $token = Str::random(64);
         $user->update(['api_token_hash' => hash('sha256', $token)]);
 
