@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TechnicianProfile extends Model
 {
     protected $fillable = [
+        'user_id',
         'bio',
         'years_experience',
         'phone',

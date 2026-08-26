@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClientProfile extends Model
 {
-    protected $fillable = ['phone', 'address', 'city', 'avatar_path'];
+    protected $fillable = ['user_id', 'phone', 'address', 'city', 'avatar_path'];
 
     public function user(): BelongsTo
     {
