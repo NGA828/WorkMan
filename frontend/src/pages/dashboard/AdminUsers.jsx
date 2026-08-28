@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
-import Icon from '../../components/Icon'
+import { useToast } from '../../context/useToast'
 import { getAdminUsers, setUserStatus } from '../../services/api'
 import { formatDate } from '../../utils/format'
 import './dashboard-pages.css'
@@ -20,6 +20,7 @@ const TABS = [
 ]
 
 export default function AdminUsers() {
+  const toast = useToast()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState('')
@@ -46,14 +47,15 @@ export default function AdminUsers() {
 
   const handleToggleStatus = async (user) => {
     setBusyId(user.id)
+    const deactivating = user.is_active !== false
     try {
       await setUserStatus(user.id, !user.is_active)
-      // Toggle client-side state directly or reload
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, is_active: !u.is_active } : u))
       )
+      toast.success(deactivating ? `${user.name} has been deactivated.` : `${user.name} has been reactivated.`)
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update user status.')
+      toast.error(err.response?.data?.message || 'Failed to update user status.')
     } finally {
       setBusyId(null)
     }

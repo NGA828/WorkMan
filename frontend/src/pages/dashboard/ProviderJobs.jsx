@@ -4,7 +4,9 @@ import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import Modal from '../../components/Modal'
+import ReportIssueModal from '../../components/ReportIssueModal'
 import { BookingStatusBadge, PaymentStatusBadge } from '../../components/StatusBadge'
+import { useToast } from '../../context/useToast'
 import { getBookings, updateBookingStatus } from '../../services/api'
 import { formatCurrency, formatDateTime } from '../../utils/format'
 import './dashboard-pages.css'
@@ -19,6 +21,7 @@ const TABS = [
 ]
 
 export default function ProviderJobs() {
+  const toast = useToast()
   const [bookings, setBookings] = useState([])
   const [tab, setTab] = useState('')
   const [loading, setLoading] = useState(true)
@@ -29,6 +32,8 @@ export default function ProviderJobs() {
   const [transportFee, setTransportFee] = useState('')
   const [acceptBusy, setAcceptBusy] = useState(false)
   const [acceptError, setAcceptError] = useState('')
+
+  const [reportBooking, setReportBooking] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -47,14 +52,23 @@ export default function ProviderJobs() {
     [bookings, tab]
   )
 
+  const STATUS_TOAST = {
+    rejected: 'Booking declined. The client has been notified.',
+    in_progress: 'Job started — the client can now track your location.',
+    done: 'Work marked as finished. Waiting for the client to confirm.',
+  }
+
   const run = async (id, payload) => {
     setBusyId(id)
     setError('')
     try {
       await updateBookingStatus(id, payload)
       await load()
+      if (STATUS_TOAST[payload.status]) toast.success(STATUS_TOAST[payload.status])
     } catch (err) {
-      setError(err.response?.data?.message || 'That action could not be completed.')
+      const message = err.response?.data?.message || 'That action could not be completed.'
+      setError(message)
+      toast.error(message)
     } finally {
       setBusyId(null)
     }
@@ -71,8 +85,11 @@ export default function ProviderJobs() {
       })
       await load()
       setAcceptBooking(null)
+      toast.success('Booking accepted. The client has been notified and can pay the transport fee.')
     } catch (err) {
-      setAcceptError(err.response?.data?.message || 'Unable to accept the booking.')
+      const message = err.response?.data?.message || 'Unable to accept the booking.'
+      setAcceptError(message)
+      toast.error(message)
     } finally {
       setAcceptBusy(false)
     }
@@ -118,8 +135,12 @@ export default function ProviderJobs() {
         </EmptyState>
       ) : (
         <div style={{ display: 'grid', gap: 16 }}>
-          {visible.map((booking) => (
-            <article className="card booking-card" key={booking.id}>
+          {visible.map((booking, index) => (
+            <article
+              className="card booking-card animate-rise"
+              key={booking.id}
+              style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
+            >
               <div className="booking-card-top">
                 <Avatar name={booking.client?.name} size={44} />
                 <div className="booking-card-meta">
@@ -213,6 +234,14 @@ export default function ProviderJobs() {
                 <Link className="btn btn-ghost btn-sm" to="/dashboard/messages">
                   <Icon name="chat" size={14} /> Message client
                 </Link>
+
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--red)' }}
+                  onClick={() => setReportBooking(booking)}
+                >
+                  <Icon name="bell" size={14} /> Report issue
+                </button>
               </div>
             </article>
           ))}
@@ -249,6 +278,13 @@ export default function ProviderJobs() {
           </form>
         )}
       </Modal>
+
+      <ReportIssueModal
+        open={Boolean(reportBooking)}
+        onClose={() => setReportBooking(null)}
+        reportedUserId={reportBooking?.client?.id}
+        bookingId={reportBooking?.id}
+      />
     </div>
   )
 }

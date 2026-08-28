@@ -3,11 +3,13 @@ import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import StarRating from '../../components/StarRating'
+import { useToast } from '../../context/useToast'
 import { deleteReview, getAdminReviews } from '../../services/api'
 import { formatDate } from '../../utils/format'
 import './dashboard-pages.css'
 
 export default function AdminReviews() {
+  const toast = useToast()
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
@@ -31,8 +33,11 @@ export default function AdminReviews() {
     try {
       await deleteReview(id)
       setReviews((list) => list.filter((review) => review.id !== id))
+      toast.success('Review removed.')
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to remove the review.')
+      const message = err.response?.data?.message || 'Unable to remove the review.'
+      setError(message)
+      toast.error(message)
     } finally {
       setBusyId(null)
     }

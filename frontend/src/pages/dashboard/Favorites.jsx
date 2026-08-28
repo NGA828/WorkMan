@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { RatingPill } from '../../components/StarRating'
-import { getFavorites, removeFavorite } from '../../services/api'
+import { useToast } from '../../context/useToast'
+import { createConversation, getFavorites, removeFavorite } from '../../services/api'
 import './dashboard-pages.css'
 
 export default function Favorites() {
+  const toast = useToast()
+  const navigate = useNavigate()
   const [favorites, setFavorites] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [chatId, setChatId] = useState(null)
 
   useEffect(() => {
     getFavorites()
@@ -24,10 +28,24 @@ export default function Favorites() {
     try {
       await removeFavorite(id)
       setFavorites((list) => list.filter((technician) => technician.id !== id))
+      toast.info('Removed from your favorites.')
     } catch {
-      // Ignore — keep the current list.
+      toast.error('Could not update your favorites. Please try again.')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  const startChat = async (technicianId) => {
+    setChatId(technicianId)
+    try {
+      const { data } = await createConversation(technicianId)
+      navigate(`/dashboard/messages?conversation=${data.conversation.id}`)
+    } catch {
+      toast.error('Could not open the conversation. Please try again.')
+      navigate('/dashboard/messages')
+    } finally {
+      setChatId(null)
     }
   }
 
@@ -55,8 +73,12 @@ export default function Favorites() {
 
   return (
     <div className="discover-grid">
-      {favorites.map((technician) => (
-        <article className="tech-card" key={technician.id}>
+      {favorites.map((technician, index) => (
+        <article
+          className="tech-card animate-rise"
+          key={technician.id}
+          style={{ animationDelay: `${Math.min(index, 12) * 50}ms` }}
+        >
           <div className="tech-card-top">
             <Avatar name={technician.user?.name} size={46} />
             <div className="tech-card-meta">
@@ -97,9 +119,14 @@ export default function Favorites() {
             <Link className="btn btn-dark btn-sm" to={`/dashboard/technicians/${technician.id}`}>
               View profile <Icon name="arrowRight" size={13} />
             </Link>
-            <Link className="btn btn-ghost btn-sm" to={`/dashboard/messages`}>
-              <Icon name="chat" size={13} /> Chat
-            </Link>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => startChat(technician.id)}
+              disabled={chatId === technician.id}
+            >
+              <Icon name="chat" size={13} /> {chatId === technician.id ? 'Opening…' : 'Chat'}
+            </button>
           </div>
         </article>
       ))}

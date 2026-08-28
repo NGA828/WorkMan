@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
+import { useToast } from '../../context/useToast'
 import { getAdminReports, resolveReport } from '../../services/api'
 import { formatDate } from '../../utils/format'
 import './dashboard-pages.css'
 
 export default function AdminReports() {
+  const toast = useToast()
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
@@ -31,9 +32,10 @@ export default function AdminReports() {
         status: 'resolved',
         admin_notes: notes[id] || 'Resolved by admin',
       })
+      toast.success('Report marked as resolved.')
       load()
-    } catch {
-      // Keep state on failure
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to resolve the report.')
     } finally {
       setBusyId(null)
     }

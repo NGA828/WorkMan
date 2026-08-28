@@ -5,6 +5,7 @@ import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { BookingStatusBadge } from '../../components/StatusBadge'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/useToast'
 import { getBooking, getBookingLocation, updateBookingLocation } from '../../services/api'
 import { formatDateTime, haversineKm, relativeTime } from '../../utils/format'
 import './dashboard-pages.css'
@@ -32,6 +33,7 @@ function project(lat, lng) {
 export default function Tracking() {
   const { bookingId } = useParams()
   const { isProvider } = useAuth()
+  const toast = useToast()
 
   const [booking, setBooking] = useState(null)
   const [location, setLocation] = useState(null)
@@ -69,6 +71,7 @@ export default function Tracking() {
       setLocation(data.location)
     } catch {
       setSharing(false)
+      toast.error('Could not share your location. Please check your connection and try again.')
     }
   }
 
@@ -96,6 +99,12 @@ export default function Tracking() {
     stepRef.current = 0
     setSharing(true)
     pushLocation(ROUTE_START)
+    toast.success('Sharing your live location with the client.')
+  }
+
+  const stopSharing = () => {
+    setSharing(false)
+    toast.info('Location sharing stopped.')
   }
 
   if (notFound) {
@@ -193,7 +202,7 @@ export default function Tracking() {
                 {['accepted', 'in_progress'].includes(booking.status) && (
                   <button
                     className={sharing ? 'btn btn-outline btn-sm' : 'btn btn-dark btn-sm'}
-                    onClick={sharing ? () => setSharing(false) : startSharing}
+                    onClick={sharing ? stopSharing : startSharing}
                   >
                     <Icon name="pin" size={14} />
                     {sharing ? 'Stop sharing' : 'Share my location'}

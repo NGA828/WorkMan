@@ -173,8 +173,9 @@ class BookingController extends Controller
         $booking->save();
 
         $clientMessage = match ($data['status']) {
-            'accepted' => 'Your booking request was accepted.',
-            'rejected' => 'Your booking request was declined.',
+            'accepted' => 'Your booking request was accepted. Pay the transport fee to confirm the visit.',
+            'rejected' => 'Your booking request was declined by the technician.',
+            'in_progress' => 'The technician is on the way / has started the job. You can track their location live.',
             'done' => 'The technician marked the work as finished. Please confirm completion.',
             default => null,
         };
@@ -232,6 +233,15 @@ class BookingController extends Controller
         }
 
         $booking->update(['status' => 'cancelled']);
+
+        if ($booking->technician?->user_id) {
+            $this->notify(
+                $booking->technician->user_id,
+                'booking.cancelled',
+                $request->user()->name . ' cancelled a pending booking request.',
+                ['booking_id' => $booking->id]
+            );
+        }
 
         return response()->json([
             'booking' => $booking->load(['technician.user:id,name']),

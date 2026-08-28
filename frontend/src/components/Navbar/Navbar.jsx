@@ -25,6 +25,7 @@ export default function Navbar() {
       >
         <span />
         <span />
+        <span />
       </button>
 
       <nav className={open ? 'nav-links is-open' : 'nav-links'}>

@@ -3,6 +3,7 @@ import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { VerificationBadge } from '../../components/StatusBadge'
+import { useToast } from '../../context/useToast'
 import { getAdminTechnicians, verifyTechnician } from '../../services/api'
 import './dashboard-pages.css'
 
@@ -14,6 +15,7 @@ const TABS = [
 ]
 
 export default function AdminVerification() {
+  const toast = useToast()
   const [technicians, setTechnicians] = useState([])
   const [tab, setTab] = useState('pending')
   const [loading, setLoading] = useState(true)
@@ -36,8 +38,10 @@ export default function AdminVerification() {
     try {
       await verifyTechnician(id, status)
       await load()
-    } catch {
-      // Keep current state.
+      if (status === 'approved') toast.success('Technician approved — they are now visible to clients.')
+      else toast.info('Technician rejected. They will not appear in client search.')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to update the verification status.')
     } finally {
       setBusyId(null)
     }
@@ -107,6 +111,22 @@ export default function AdminVerification() {
               </div>
 
               {technician.bio && <div className="booking-notes">{technician.bio}</div>}
+
+              {technician.id_document_path ? (
+                <a
+                  className="chip"
+                  href={`/storage/${technician.id_document_path}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ textDecoration: 'none', width: 'fit-content' }}
+                >
+                  <Icon name="doc" size={13} /> View submitted ID document
+                </a>
+              ) : (
+                <div className="booking-notes" style={{ background: 'var(--red-soft)', color: 'var(--red)' }}>
+                  No identity document uploaded yet.
+                </div>
+              )}
 
               <div className="booking-actions">
                 <button

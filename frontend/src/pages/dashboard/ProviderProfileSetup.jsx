@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
 import { VerificationBadge } from '../../components/StatusBadge'
+import { useToast } from '../../context/useToast'
 import {
   addProviderLocation,
   addProviderService,
@@ -34,6 +35,7 @@ function SectionCard({ eyebrow, title, subtitle, children }) {
 }
 
 export default function ProviderProfileSetup() {
+  const toast = useToast()
   const [profile, setProfile] = useState(null)
   const [basics, setBasics] = useState({ name: '', phone: '', bio: '', years_experience: '' })
   const [services, setServices] = useState([])
@@ -106,8 +108,11 @@ export default function ProviderProfileSetup() {
         years_experience: basics.years_experience === '' ? null : Number(basics.years_experience),
       })
       setBasicsMsg('Saved.')
+      toast.success('Personal information saved.')
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to save.')
+      const message = err.response?.data?.message || 'Unable to save.'
+      setError(message)
+      toast.error(message)
     }
   }
 
@@ -124,14 +129,22 @@ export default function ProviderProfileSetup() {
       const { data } = await getProviderServices()
       setServices(data.services || [])
       setServiceMsg('Service added.')
+      toast.success('Service added to your profile.')
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to add the service.')
+      const message = err.response?.data?.message || 'Unable to add the service.'
+      setError(message)
+      toast.error(message)
     }
   }
 
   const removeService = async (id) => {
-    await removeProviderService(id).catch(() => {})
-    setServices((list) => list.filter((service) => service.id !== id))
+    try {
+      await removeProviderService(id)
+      setServices((list) => list.filter((service) => service.id !== id))
+      toast.info('Service removed.')
+    } catch {
+      toast.error('Unable to remove the service.')
+    }
   }
 
   const addLocation = async (event) => {
@@ -143,14 +156,22 @@ export default function ProviderProfileSetup() {
       const { data } = await getProviderLocations()
       setLocations(data.locations || [])
       setLocationMsg('Service area added.')
+      toast.success('Service area added.')
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to add the service area.')
+      const message = err.response?.data?.message || 'Unable to add the service area.'
+      setError(message)
+      toast.error(message)
     }
   }
 
   const removeLocation = async (id) => {
-    await removeProviderLocation(id).catch(() => {})
-    setLocations((list) => list.filter((location) => location.id !== id))
+    try {
+      await removeProviderLocation(id)
+      setLocations((list) => list.filter((location) => location.id !== id))
+      toast.info('Service area removed.')
+    } catch {
+      toast.error('Unable to remove the service area.')
+    }
   }
 
   const updateHour = (index, key, value) => {
@@ -169,8 +190,11 @@ export default function ProviderProfileSetup() {
         }))
       )
       setHoursMsg('Working hours saved. Clients can now book you only within these times.')
+      toast.success('Working hours saved.')
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to save working hours.')
+      const message = err.response?.data?.message || 'Unable to save working hours.'
+      setError(message)
+      toast.error(message)
     }
   }
 
@@ -186,10 +210,13 @@ export default function ProviderProfileSetup() {
       const { data } = await uploadIdentityDocument(formData)
       setUploadMsg(data.message || 'ID uploaded successfully!')
       setFile(null)
+      toast.success('ID document uploaded — pending administrator review.')
       const profileRes = await getProfile()
       setProfile(profileRes.data.profile || {})
     } catch (err) {
-      setUploadErr(err.response?.data?.message || 'Unable to upload the ID document.')
+      const message = err.response?.data?.message || 'Unable to upload the ID document.'
+      setUploadErr(message)
+      toast.error(message)
     } finally {
       setUploading(false)
     }

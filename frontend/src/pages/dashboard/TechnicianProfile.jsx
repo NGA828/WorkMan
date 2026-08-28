@@ -14,12 +14,14 @@ import {
   getTechnicianReviews,
   removeFavorite,
 } from '../../services/api'
+import { useToast } from '../../context/useToast'
 import { DAY_NAMES, formatCurrency, formatDate, formatHoursRow } from '../../utils/format'
 import './dashboard-pages.css'
 
 export default function TechnicianProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const toast = useToast()
 
   const [technician, setTechnician] = useState(null)
   const [reviews, setReviews] = useState([])
@@ -33,6 +35,7 @@ export default function TechnicianProfile() {
   const [submitting, setSubmitting] = useState(false)
   const [bookingMessage, setBookingMessage] = useState(null)
   const [bookingError, setBookingError] = useState(null)
+  const [heartBeat, setHeartBeat] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -62,12 +65,20 @@ export default function TechnicianProfile() {
   }, [technician])
 
   const toggleFavorite = async () => {
-    if (favorite) {
-      await removeFavorite(id).catch(() => {})
-      setFavorite(false)
-    } else {
-      await addFavorite(id).catch(() => {})
-      setFavorite(true)
+    setHeartBeat(true)
+    setTimeout(() => setHeartBeat(false), 420)
+    try {
+      if (favorite) {
+        await removeFavorite(id)
+        setFavorite(false)
+        toast.info('Removed from your favorites.')
+      } else {
+        await addFavorite(id)
+        setFavorite(true)
+        toast.success('Saved to your favorites.')
+      }
+    } catch {
+      toast.error('Could not update your favorites. Please try again.')
     }
   }
 
@@ -76,6 +87,7 @@ export default function TechnicianProfile() {
       const { data } = await createConversation(id)
       navigate(`/dashboard/messages?conversation=${data.conversation.id}`)
     } catch {
+      toast.error('Could not open the conversation. Please try again.')
       navigate('/dashboard/messages')
     }
   }
@@ -96,10 +108,13 @@ export default function TechnicianProfile() {
       setBookingMessage(
         'Booking request sent. The technician will review it and reply shortly — you can follow it from My bookings.'
       )
+      toast.success('Booking request sent! The technician has been notified.')
       setScheduledAt('')
       setNotes('')
     } catch (error) {
-      setBookingError(error.response?.data?.message || 'Unable to send the booking request.')
+      const message = error.response?.data?.message || 'Unable to send the booking request.'
+      setBookingError(message)
+      toast.error(message)
     } finally {
       setSubmitting(false)
     }
@@ -163,9 +178,10 @@ export default function TechnicianProfile() {
         <div className="profile-actions">
           <button
             type="button"
-            className={favorite ? 'fav-btn active' : 'fav-btn'}
+            className={`fav-btn ${favorite ? 'active' : ''} ${heartBeat ? 'beat' : ''}`}
             onClick={toggleFavorite}
             aria-label="Toggle favorite"
+            aria-pressed={favorite}
             title="Save to favorites"
           >
             <Icon name="heart" size={17} />
@@ -285,9 +301,22 @@ export default function TechnicianProfile() {
             />
           </div>
           {bookingError && <div className="form-error">{bookingError}</div>}
-          {bookingMessage && <div className="success-message">{bookingMessage}</div>}
+          {bookingMessage && (
+            <div className="success-message" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span className="success-check animate-pop">
+                <Icon name="check" size={16} />
+              </span>
+              <span>{bookingMessage}</span>
+            </div>
+          )}
           <button className="btn btn-dark" disabled={submitting}>
-            {submitting ? 'Sending request…' : 'Send booking request'}
+            {submitting ? (
+              <>
+                <span className="btn-spinner" /> Sending request…
+              </>
+            ) : (
+              'Send booking request'
+            )}
           </button>
         </form>
       </Modal>

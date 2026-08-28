@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\TechnicianProfile;
+use App\Models\User;
+use App\Models\WorkmanNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class MessagingController extends Controller
 {
@@ -100,6 +103,24 @@ class MessagingController extends Controller
         ]);
 
         $conversation->update(['last_message_at' => $message->created_at]);
+
+        // Notify the other participant (client <-> technician).
+        $recipientId = $request->user()->id === $conversation->client_id
+            ? $conversation->technician?->user_id
+            : $conversation->client_id;
+
+        if ($recipientId && $recipientId !== $request->user()->id) {
+            WorkmanNotification::create([
+                'id' => (string) Str::uuid(),
+                'type' => 'message.new',
+                'notifiable_type' => User::class,
+                'notifiable_id' => $recipientId,
+                'data' => [
+                    'message' => 'New message from ' . $request->user()->name . '.',
+                    'conversation_id' => $conversation->id,
+                ],
+            ]);
+        }
 
         return response()->json([
             'message' => $message->load('sender:id,name,role'),
