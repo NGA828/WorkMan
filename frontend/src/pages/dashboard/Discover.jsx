@@ -4,10 +4,12 @@ import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { RatingPill } from '../../components/StarRating'
+import { useToast } from '../../context/useToast'
 import { addFavorite, getCategories, getFavorites, getTechnicians, removeFavorite } from '../../services/api'
 import './dashboard-pages.css'
 
 export default function Discover() {
+  const toast = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
@@ -64,13 +66,15 @@ export default function Discover() {
       if (isFavorite) {
         await removeFavorite(technicianId)
         setFavorites((list) => list.filter((technician) => technician.id !== technicianId))
+        toast.info('Removed from your favorites.')
       } else {
         await addFavorite(technicianId)
         const { data } = await getFavorites()
         setFavorites(data.technicians || [])
+        toast.success('Saved to your favorites.')
       }
     } catch {
-      // Silent — the button simply stays in its previous state.
+      toast.error('Could not update your favorites. Please try again.')
     } finally {
       setBusyFavorite(null)
     }
@@ -165,8 +169,12 @@ export default function Discover() {
         />
       ) : (
         <div className="discover-grid">
-          {items.map((technician) => (
-            <article className="tech-card" key={technician.id}>
+          {items.map((technician, index) => (
+            <article
+              className="tech-card animate-rise"
+              key={technician.id}
+              style={{ animationDelay: `${Math.min(index, 12) * 50}ms` }}
+            >
               <div className="tech-card-top">
                 <Avatar name={technician.user?.name} size={46} />
                 <div className="tech-card-meta">
@@ -193,7 +201,7 @@ export default function Discover() {
                     {service.name}
                   </span>
                 ))}
-                {(technician.services || []).length === 0 && <span className="chip">Services coming soon</span>}
+                {(technician.services || []).length === 0 && <span className="chip">Services not listed yet</span>}
               </div>
 
               <div className="tech-card-stats">

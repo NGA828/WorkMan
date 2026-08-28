@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/useToast'
 import { getProfile, updateProfile, uploadIdentityDocument } from '../../services/api'
-import Icon from '../../components/Icon'
 import './dashboard-pages.css'
 
 export default function SettingsPage() {
   const { user, refresh } = useAuth()
+  const toast = useToast()
   const [form, setForm] = useState({ name: '', phone: '', address: '', city: '' })
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -19,7 +20,7 @@ export default function SettingsPage() {
   const [uploadMsg, setUploadMsg] = useState('')
   const [uploadErr, setUploadErr] = useState('')
 
-  const loadProfile = () => {
+  const loadProfile = useCallback(() => {
     getProfile()
       .then(({ data }) => {
         setProfile(data.profile)
@@ -32,11 +33,11 @@ export default function SettingsPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }
+  }, [user])
 
   useEffect(() => {
     loadProfile()
-  }, [user])
+  }, [loadProfile])
 
   const update = (key) => (event) => setForm({ ...form, [key]: event.target.value })
 
@@ -50,8 +51,11 @@ export default function SettingsPage() {
       setMessage('Your information has been saved.')
       refresh()
       loadProfile()
+      toast.success('Your information has been saved.')
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to save your information.')
+      const message = err.response?.data?.message || 'Unable to save your information.'
+      setError(message)
+      toast.error(message)
     } finally {
       setSaving(false)
     }
@@ -77,9 +81,12 @@ export default function SettingsPage() {
       const { data } = await uploadIdentityDocument(formData)
       setUploadMsg(data.message || 'ID uploaded successfully!')
       setFile(null)
+      toast.success('ID uploaded successfully — your verification is now pending review.')
       loadProfile()
     } catch (err) {
-      setUploadErr(err.response?.data?.message || 'Failed to upload identity document.')
+      const message = err.response?.data?.message || 'Failed to upload identity document.'
+      setUploadErr(message)
+      toast.error(message)
     } finally {
       setUploading(false)
     }

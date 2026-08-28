@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Review;
+use App\Models\User;
+use App\Models\WorkmanNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ReviewController extends Controller
 {
@@ -63,6 +66,19 @@ class ReviewController extends Controller
 
             return $review;
         });
+
+        if ($booking->technician?->user_id) {
+            WorkmanNotification::create([
+                'id' => (string) Str::uuid(),
+                'type' => 'review.new',
+                'notifiable_type' => User::class,
+                'notifiable_id' => $booking->technician->user_id,
+                'data' => [
+                    'message' => $request->user()->name . ' left you a ' . $data['rating'] . '-star review.',
+                    'booking_id' => $booking->id,
+                ],
+            ]);
+        }
 
         return response()->json(['review' => $review->load('client:id,name')], 201);
     }

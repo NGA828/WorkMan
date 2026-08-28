@@ -4,8 +4,10 @@ import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import Modal from '../../components/Modal'
+import ReportIssueModal from '../../components/ReportIssueModal'
 import StarRating from '../../components/StarRating'
 import { BookingStatusBadge, PaymentStatusBadge } from '../../components/StatusBadge'
+import { useToast } from '../../context/useToast'
 import {
   cancelBooking,
   confirmBooking,
@@ -13,9 +15,10 @@ import {
   createConversation,
   createPayment,
   getBookings,
+  getPayments,
 } from '../../services/api'
 import api from '../../services/api'
-import { formatCurrency, formatDateTime } from '../../utils/format'
+import { formatCurrency, formatDateTime, formatDate } from '../../utils/format'
 import './dashboard-pages.css'
 
 const TABS = [
@@ -27,7 +30,100 @@ const TABS = [
   ['completed', 'Completed'],
   ['cancelled', 'Cancelled'],
   ['rejected', 'Rejected'],
+  ['payments', 'Payments'],
 ]
+
+const PAYMENT_TYPES = {
+  transport_fee: 'Transport fee',
+}
+
+function PaymentHistory({ payments, loading }) {
+  if (loading) {
+    return (
+      <div className="page-loader">
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  if (payments.length === 0) {
+    return (
+      <EmptyState
+        icon="doc"
+        title="No payments yet"
+        text="Transport fees you pay through WorkMan will be recorded here. Only the transport fee is paid on the platform — service and material costs are settled directly with the technician after diagnosis."
+      >
+        <Link className="btn btn-dark" to="/dashboard/discover">
+          Find a technician
+        </Link>
+      </EmptyState>
+    )
+  }
+
+  const totalPaid = payments
+    .filter((payment) => payment.status === 'paid')
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div className="stat-grid" style={{ marginBottom: 4 }}>
+        <span className="stat-card">
+          <span className="stat-icon green">
+            <Icon name="check" size={19} />
+          </span>
+          <span>
+            <b>{payments.filter((p) => p.status === 'paid').length}</b>
+            <small>Payments made</small>
+          </span>
+        </span>
+        <span className="stat-card">
+          <span className="stat-icon gold">
+            <Icon name="doc" size={19} />
+          </span>
+          <span>
+            <b>{formatCurrency(totalPaid)}</b>
+            <small>Total transport paid</small>
+          </span>
+        </span>
+      </div>
+
+      {payments.map((payment) => (
+        <article className="card booking-card" key={payment.id}>
+          <div className="booking-card-top">
+            <span className="stat-icon blue" style={{ width: 40, height: 40 }}>
+              <Icon name="doc" size={18} />
+            </span>
+            <div className="booking-card-meta">
+              <b>{PAYMENT_TYPES[payment.purpose] || 'Payment'}</b>
+              <small>
+                Ref {payment.reference} · {payment.provider === 'mtn_momo' ? 'MTN MoMo' : payment.provider === 'orange_money' ? 'Orange Money' : 'WorkMan'}
+              </small>
+            </div>
+            <span className={`badge ${payment.status === 'paid' ? 'badge-green' : 'badge-gold'}`}>
+              {payment.status === 'paid' ? 'Paid' : 'Pending'}
+            </span>
+          </div>
+
+          <div className="booking-details">
+            <span>
+              <Icon name="pin" size={15} /> {formatCurrency(payment.amount, payment.currency || 'XAF')}
+            </span>
+            {payment.booking?.scheduled_at && (
+              <span>
+                <Icon name="calendar" size={15} /> Appointment {formatDate(payment.booking.scheduled_at)}
+              </span>
+            )}
+            {payment.paid_at && (
+              <span>
+                <Icon name="check" size={15} /> Paid {formatDate(payment.paid_at)}
+              </span>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  )
+}
 
 const PROVIDERS = [
   ['mtn_momo', 'MTN Mobile Money'],
@@ -35,6 +131,7 @@ const PROVIDERS = [
 ]
 
 function ReviewForm({ bookingId, onDone }) {
+  const toast = useToast()
   const [rating, setRating] = useState(0)
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
@@ -50,9 +147,12 @@ function ReviewForm({ bookingId, onDone }) {
     setError('')
     try {
       await api.post('/reviews', { booking_id: bookingId, rating, body })
+      toast.success(`Thanks! Your ${rating}-star review was submitted.`)
       onDone()
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to submit this review.')
+      const message = err.response?.data?.message || 'Unable to submit this review.'
+      setError(message)
+      toast.error(message)
     } finally {
       setBusy(false)
     }
@@ -80,6 +180,7 @@ function ReviewForm({ bookingId, onDone }) {
 
 export default function Bookings() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [bookings, setBookings] = useState([])
   const [tab, setTab] = useState('')
   const [loading, setLoading] = useState(true)
@@ -90,6 +191,11 @@ export default function Bookings() {
   const [provider, setProvider] = useState('mtn_momo')
   const [payBusy, setPayBusy] = useState(false)
   const [payError, setPayError] = useState('')
+
+  const [payments, setPayments] = useState([])
+  const [paymentsLoading, setPaymentsLoading] = useState(false)
+
+  const [reportBooking, setReportBooking] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -103,6 +209,20 @@ export default function Bookings() {
     load()
   }, [load])
 
+  // Load payment history only when the Payments tab is opened (and once after
+  // a payment is completed so the new record shows immediately).
+  const loadPayments = useCallback(() => {
+    setPaymentsLoading(true)
+    getPayments()
+      .then((response) => setPayments(response.data.payments?.data || []))
+      .catch(() => setPayments([]))
+      .finally(() => setPaymentsLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (tab === 'payments') loadPayments()
+  }, [tab, loadPayments])
+
   const visible = useMemo(
     () => (tab ? bookings.filter((booking) => booking.status === tab) : bookings),
     [bookings, tab]
@@ -115,14 +235,24 @@ export default function Bookings() {
       await action()
       await load()
     } catch (err) {
-      setError(err.response?.data?.message || 'That action could not be completed.')
+      const message = err.response?.data?.message || 'That action could not be completed.'
+      setError(message)
+      toast.error(message)
     } finally {
       setBusyId(null)
     }
   }
 
-  const cancel = (id) => run(id, () => cancelBooking(id))
-  const confirm = (id) => run(id, () => confirmBooking(id))
+  const cancel = (id) =>
+    run(id, async () => {
+      await cancelBooking(id)
+      toast.success('Booking request cancelled.')
+    })
+  const confirm = (id) =>
+    run(id, async () => {
+      await confirmBooking(id)
+      toast.success('Completion confirmed — thanks for using WorkMan!')
+    })
 
   const messageTechnician = async (technicianProfileId) => {
     try {
@@ -142,9 +272,13 @@ export default function Bookings() {
       // Simulated provider approval (in production this is the MoMo / OM webhook).
       await confirmPayment(data.payment.id)
       await load()
+      loadPayments()
       setPayBooking(null)
+      toast.success(`Transport fee of ${formatCurrency(payBooking.transport_fee)} paid successfully.`)
     } catch (err) {
-      setPayError(err.response?.data?.message || 'Unable to complete the transport payment.')
+      const message = err.response?.data?.message || 'Unable to complete the transport payment.'
+      setPayError(message)
+      toast.error(message)
     } finally {
       setPayBusy(false)
     }
@@ -214,6 +348,17 @@ export default function Bookings() {
       </button>
     )
 
+    actions.push(
+      <button
+        key="report"
+        className="btn btn-ghost btn-sm"
+        style={{ color: 'var(--red)' }}
+        onClick={() => setReportBooking(booking)}
+      >
+        <Icon name="bell" size={14} /> Report issue
+      </button>
+    )
+
     return actions
   }
 
@@ -233,7 +378,9 @@ export default function Bookings() {
 
       {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
 
-      {visible.length === 0 ? (
+      {tab === 'payments' ? (
+        <PaymentHistory payments={payments} loading={paymentsLoading} />
+      ) : visible.length === 0 ? (
         <EmptyState
           icon="calendar"
           title={tab ? `No ${tab.replace('_', ' ')} bookings` : 'No bookings yet'}
@@ -245,8 +392,12 @@ export default function Bookings() {
         </EmptyState>
       ) : (
         <div style={{ display: 'grid', gap: 16 }}>
-          {visible.map((booking) => (
-            <article className="card booking-card" key={booking.id}>
+          {visible.map((booking, index) => (
+            <article
+              className="card booking-card animate-rise"
+              key={booking.id}
+              style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
+            >
               <div className="booking-card-top">
                 <Avatar name={booking.technician?.user?.name} size={44} />
                 <div className="booking-card-meta">
@@ -332,11 +483,24 @@ export default function Bookings() {
               Development note: provider confirmation is simulated locally.
             </p>
             <button className="btn btn-dark" disabled={payBusy}>
-              {payBusy ? 'Processing payment…' : `Pay ${formatCurrency(payBooking.transport_fee)}`}
+              {payBusy ? (
+                <>
+                  <span className="btn-spinner" /> Processing payment…
+                </>
+              ) : (
+                `Pay ${formatCurrency(payBooking.transport_fee)}`
+              )}
             </button>
           </form>
         )}
       </Modal>
+
+      <ReportIssueModal
+        open={Boolean(reportBooking)}
+        onClose={() => setReportBooking(null)}
+        reportedUserId={reportBooking?.technician?.user?.id ?? reportBooking?.technician?.user_id}
+        bookingId={reportBooking?.id}
+      />
     </div>
   )
 }

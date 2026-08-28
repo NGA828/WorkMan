@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Brand from '../../components/Brand'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/useToast'
 import './AuthPage.css'
 
 export default function AuthPage({ mode = 'login' }) {
@@ -9,6 +10,7 @@ export default function AuthPage({ mode = 'login' }) {
   const { login, register } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const toast = useToast()
   const from = location.state?.from?.pathname || '/dashboard'
 
   const [form, setForm] = useState({
@@ -30,26 +32,28 @@ export default function AuthPage({ mode = 'login' }) {
     setError('')
     setLoading(true)
     try {
-      if (isRegister) {
-        await register(form)
-      } else {
-        await login({ email: form.email, password: form.password })
-      }
+      const user = isRegister
+        ? await register(form)
+        : await login({ email: form.email, password: form.password })
+      const name = user?.name?.split(' ')[0] || ''
+      toast.success(isRegister ? `Welcome to WorkMan, ${name}!` : `Welcome back, ${name}!`)
       navigate(from, { replace: true })
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong. Please try again.')
+      const message = err.response?.data?.message || 'Something went wrong. Please try again.'
+      setError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <main className="auth-page">
+    <main className={isRegister ? 'auth-page auth-page--register' : 'auth-page'}>
       <Link className="auth-back" to="/">
         ← Back to WorkMan
       </Link>
 
-      <div className="auth-card">
+      <div className={isRegister ? 'auth-card auth-card--register' : 'auth-card'}>
         <div className="auth-brand">
           <Brand />
         </div>
@@ -75,7 +79,7 @@ export default function AuthPage({ mode = 'login' }) {
         <form onSubmit={submit}>
           {isRegister && (
             <>
-              <label>
+              <label className="field-name">
                 Full name
                 <input
                   required
@@ -109,7 +113,7 @@ export default function AuthPage({ mode = 'login' }) {
             </>
           )}
 
-          <label>
+          <label className="field-email">
             Email address
             <input
               required
@@ -133,7 +137,7 @@ export default function AuthPage({ mode = 'login' }) {
             </div>
           )}
 
-          <label>
+          <label className="field-password">
             Password
             <input
               required
@@ -146,7 +150,7 @@ export default function AuthPage({ mode = 'login' }) {
           </label>
 
           {isRegister && (
-            <label>
+            <label className="field-confirm">
               Confirm password
               <input
                 required
@@ -161,8 +165,16 @@ export default function AuthPage({ mode = 'login' }) {
           {error && <div className="form-error">{error}</div>}
 
           <button className="btn btn-dark auth-submit" disabled={loading}>
-            {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Log in'}
-            <span className="auth-submit-arrow">↗</span>
+            {loading ? (
+              <>
+                <span className="btn-spinner" /> Please wait…
+              </>
+            ) : isRegister ? (
+              'Create account'
+            ) : (
+              'Log in'
+            )}
+            {!loading && <span className="auth-submit-arrow">↗</span>}
           </button>
         </form>
 

@@ -44,7 +44,7 @@
 }
 
 .auth-card h1 {
-  font-size: 46px;
+  font-size: clamp(34px, 7vw, 46px);
   margin: 15px 0 10px;
   letter-spacing: -0.04em;
 }
@@ -158,6 +158,81 @@
 .auth-switch a {
   color: var(--coral);
   font-weight: 700;
+}
+
+/* ---- Register: wider two-column layout so the full form fits on screen ---- */
+@media (min-width: 760px) {
+  .auth-page--register {
+    padding: 16px 25px;
+  }
+
+  .auth-card--register {
+    width: min(100%, 860px);
+    padding: 32px 44px;
+  }
+
+  .auth-card--register .auth-brand {
+    margin-bottom: 18px;
+  }
+
+  .auth-card--register h1 {
+    font-size: 36px;
+    margin: 8px 0 6px;
+  }
+
+  .auth-card--register .auth-sub {
+    margin-bottom: 18px;
+  }
+
+  .auth-card--register form {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 18px;
+    row-gap: 13px;
+  }
+
+  .auth-card--register .role-option {
+    padding: 13px 15px;
+  }
+
+  /* Field order: role (full width) → name / email → phone+city (full width) → passwords */
+  .auth-card--register .role-field {
+    grid-column: 1 / -1;
+    order: 1;
+  }
+
+  .auth-card--register .field-name {
+    order: 2;
+  }
+
+  .auth-card--register .field-email {
+    order: 3;
+  }
+
+  .auth-card--register .auth-row {
+    grid-column: 1 / -1;
+    order: 4;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  .auth-card--register .field-password {
+    order: 5;
+  }
+
+  .auth-card--register .field-confirm {
+    order: 6;
+  }
+
+  .auth-card--register .form-error {
+    grid-column: 1 / -1;
+    order: 7;
+  }
+
+  .auth-card--register .auth-submit {
+    grid-column: 1 / -1;
+    order: 8;
+    margin-top: 2px;
+  }
 }
 
 @media (max-width: 480px) {

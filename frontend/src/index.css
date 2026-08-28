@@ -42,6 +42,41 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
+}
+
+/* Media never forces horizontal scrolling */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+/* Long words / URLs never overflow their container */
+p,
+h1,
+h2,
+h3,
+h4,
+small,
+b,
+strong {
+  overflow-wrap: break-word;
+}
+
+/* Keep inputs at 16px on small screens so iOS Safari doesn't auto-zoom */
+@media (max-width: 600px) {
+  .field input,
+  .field select,
+  .field textarea,
+  .thread-form input,
+  .filter-bar .field input,
+  .filter-bar .field select,
+  .hours-editor-row input,
+  .auth-card input {
+    font-size: 16px;
+  }
 }
 
 button,

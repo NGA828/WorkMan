@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
+import { useToast } from '../../context/useToast'
 import { createCategory, deleteCategory, getAdminCategories, updateCategory } from '../../services/api'
 import './dashboard-pages.css'
 
 export default function AdminCategories() {
+  const toast = useToast()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ name: '', description: '' })
@@ -44,9 +46,12 @@ export default function AdminCategories() {
       })
       setForm({ name: '', description: '' })
       setMessage('Category created.')
+      toast.success(`“${form.name}” category created.`)
       await load()
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to create the category.')
+      const message = err.response?.data?.message || 'Unable to create the category.'
+      setError(message)
+      toast.error(message)
     } finally {
       setBusy(false)
     }
@@ -54,10 +59,14 @@ export default function AdminCategories() {
 
   const toggle = async (category) => {
     try {
-      await updateCategory(category.id, { is_active: !category.is_active })
+      const activating = !category.is_active
+      await updateCategory(category.id, { is_active: activating })
       await load()
+      toast.success(`“${category.name}” ${activating ? 'activated' : 'deactivated'}.`)
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to update the category.')
+      const message = err.response?.data?.message || 'Unable to update the category.'
+      setError(message)
+      toast.error(message)
     }
   }
 
@@ -66,8 +75,11 @@ export default function AdminCategories() {
     try {
       await deleteCategory(id)
       await load()
+      toast.info('Category deleted.')
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to delete the category.')
+      const message = err.response?.data?.message || 'Unable to delete the category.'
+      setError(message)
+      toast.error(message)
     }
   }
 

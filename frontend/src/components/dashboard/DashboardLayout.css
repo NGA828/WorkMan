@@ -755,6 +755,7 @@
 @media (max-width: 640px) {
   .topbar {
     padding: 14px 16px;
+    gap: 10px;
   }
 
   .app-content {
@@ -765,7 +766,48 @@
     display: none;
   }
 
+  .topbar-actions {
+    gap: 8px;
+  }
+
+  .topbar-title h1 {
+    font-size: 18px;
+  }
+
   .stat-grid {
     grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .stat-card b {
+    font-size: 18px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .page-head h2 {
+    font-size: 22px;
+  }
+
+  .empty-state {
+    padding: 40px 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-user {
+    display: none;
   }
 }

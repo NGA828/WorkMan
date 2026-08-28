@@ -38,7 +38,7 @@
 
 .welcome-banner h2 {
   color: #fff;
-  font-size: 34px;
+  font-size: clamp(24px, 5vw, 34px);
   letter-spacing: -0.04em;
   line-height: 1.02;
   margin: 12px 0 10px;
@@ -947,6 +947,19 @@
   align-content: start;
 }
 
+.thread-back {
+  display: none;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  place-items: center;
+  cursor: pointer;
+  color: var(--ink);
+}
+
 /* ------------------------------------------------------------- responsive */
 @media (max-width: 960px) {
   .profile-grid,
@@ -957,6 +970,7 @@
 
   .messages-shell {
     height: auto;
+    gap: 14px;
   }
 
   .conversation-list {
@@ -969,6 +983,78 @@
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .map-panel {
+    min-height: 320px;
+  }
+
+  .welcome-banner {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Messages: show either the list or the active conversation, not both stacked */
+  .thread-back {
+    display: grid;
+  }
+
+  .messages-shell:has(.thread-panel.thread-open) .conversation-list {
+    display: none;
+  }
+
+  .messages-shell:has(.thread-panel:not(.thread-open)) .thread-panel {
+    display: none;
+  }
+
+  .thread-panel {
+    min-height: 70vh;
+  }
+
+  .bubble {
+    max-width: 85%;
+  }
+
+  .thread-form {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .thread-form .btn {
+    padding: 11px 14px;
+  }
+
+  .profile-hero,
+  .booking-card {
+    padding: 18px;
+  }
+
+  .home-card,
+  .profile-card {
+    padding: 18px;
+  }
+
+  .booking-actions .btn,
+  .profile-actions .btn {
+    flex: 1;
+  }
+
+  .map-panel {
+    min-height: 260px;
+  }
+
+  .discover-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-card {
+    padding: 18px;
+  }
+
+  .hours-editor-row b {
+    min-width: 0;
+    flex-basis: 100%;
   }
 }
 

@@ -4,12 +4,14 @@ import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/useToast'
 import { getConversations, getMessages, sendMessage } from '../../services/api'
 import { relativeTime } from '../../utils/format'
 import './dashboard-pages.css'
 
 export default function Messages() {
   const { user } = useAuth()
+  const toast = useToast()
   const [searchParams] = useSearchParams()
   const [conversations, setConversations] = useState([])
   const [active, setActive] = useState(null)
@@ -93,6 +95,7 @@ export default function Messages() {
       loadConversations()
     } catch {
       // Keep the input so the message is not lost.
+      toast.error('Your message could not be sent. Please try again.')
     }
   }
 
@@ -127,10 +130,18 @@ export default function Messages() {
           )}
         </aside>
 
-        <section className="thread-panel">
+        <section className={active ? 'thread-panel thread-open' : 'thread-panel'}>
           {active ? (
             <>
               <div className="thread-head">
+                <button
+                  type="button"
+                  className="thread-back"
+                  onClick={() => setActive(null)}
+                  aria-label="Back to conversations"
+                >
+                  <Icon name="arrowLeft" size={16} />
+                </button>
                 <Avatar name={otherName(active)} size={38} />
                 <div className="thread-head-meta">
                   <b>{otherName(active)}</b>

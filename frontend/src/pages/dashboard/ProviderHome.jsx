@@ -4,12 +4,14 @@ import Avatar from '../../components/Avatar'
 import Icon from '../../components/Icon'
 import { BookingStatusBadge } from '../../components/StatusBadge'
 import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/useToast'
 import { getBookings, getProfile, setProviderAvailability } from '../../services/api'
 import { formatCurrency, formatDateTime } from '../../utils/format'
 import './dashboard-pages.css'
 
 export default function ProviderHome() {
   const { user } = useAuth()
+  const toast = useToast()
   const [profile, setProfile] = useState(null)
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -37,8 +39,9 @@ export default function ProviderHome() {
       const next = !profile?.is_available
       const { data } = await setProviderAvailability(next)
       setProfile(data.profile)
+      toast.success(next ? 'You are now available for new requests.' : 'You are now marked as unavailable.')
     } catch {
-      // Keep current state.
+      toast.error('Could not update your availability. Please try again.')
     } finally {
       setToggling(false)
     }
