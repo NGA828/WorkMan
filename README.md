@@ -17,7 +17,9 @@ The platform has three roles, each with its own dashboard:
 ```
 WorkMan/
 ├── backend/    Laravel 13 API (PHP 8.3+)
-└── frontend/   React 19 + Vite SPA (react-router)
+├── frontend/   React 19 + Vite SPA (react-router)
+├── postman/    Postman API test collection + Newman run
+└── docs/       Screenshots (Postman API testing)
 ```
 
 ## Running locally
@@ -57,6 +59,20 @@ npm run dev
 Vite proxies `/api` to `http://127.0.0.1:8000` — no CORS setup needed in development.
 
 Open **http://localhost:5173** and sign in with one of the demo accounts above.
+
+## API testing (Postman)
+
+The [`postman/`](postman/) folder contains a complete, self-contained Postman
+collection that walks the entire platform — all 3 roles and the full booking
+lifecycle — with **83 assertions across 32 requests** (all passing against a
+seeded instance, avg response 3 ms). Run it headless with:
+
+```bash
+npx newman run postman/workman-api.postman_collection.json
+```
+
+![Postman request view](docs/screenshots/postman-api-request.png)
+![Postman collection runner](docs/screenshots/postman-api-collection-runner.png)
 
 ## API surface
 
