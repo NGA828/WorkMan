@@ -10,12 +10,14 @@ import { BookingStatusBadge, PaymentStatusBadge } from '../../components/StatusB
 import { useToast } from '../../context/useToast'
 import {
   cancelBooking,
+  clearBooking,
   confirmBooking,
   confirmPayment,
   createConversation,
   createPayment,
   getBookings,
   getPayments,
+  releaseTransport,
 } from '../../services/api'
 import api from '../../services/api'
 import { formatCurrency, formatDateTime, formatDate } from '../../utils/format'
@@ -99,8 +101,8 @@ function PaymentHistory({ payments, loading }) {
                 Ref {payment.reference} · {payment.provider === 'mtn_momo' ? 'MTN MoMo' : payment.provider === 'orange_money' ? 'Orange Money' : 'WorkMan'}
               </small>
             </div>
-            <span className={`badge ${payment.status === 'paid' ? 'badge-green' : 'badge-gold'}`}>
-              {payment.status === 'paid' ? 'Paid' : 'Pending'}
+            <span className={`badge ${['paid', 'released'].includes(payment.status) ? 'badge-green' : 'badge-gold'}`}>
+              {payment.status === 'held' ? 'Held in escrow' : payment.status === 'released' ? 'Released' : payment.status === 'paid' ? 'Paid' : 'Pending'}
             </span>
           </div>
 
@@ -188,7 +190,9 @@ export default function Bookings() {
   const [error, setError] = useState('')
 
   const [payBooking, setPayBooking] = useState(null)
+  const [payPurpose, setPayPurpose] = useState('transport_fee')
   const [provider, setProvider] = useState('mtn_momo')
+  const [phone, setPhone] = useState('')
   const [payBusy, setPayBusy] = useState(false)
   const [payError, setPayError] = useState('')
 
@@ -248,6 +252,22 @@ export default function Bookings() {
       await cancelBooking(id)
       toast.success('Booking request cancelled.')
     })
+
+  const clear = async (id) => {
+    if (!window.confirm('Clear this booking from your history?')) return
+    setBusyId(id)
+    try {
+      await clearBooking(id)
+      setBookings((list) => list.filter((booking) => booking.id !== id))
+      toast.success('Booking cleared from your history.')
+    } catch (err) {
+      const message = err.response?.data?.message || 'Unable to clear this booking.'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setBusyId(null)
+    }
+  }
   const confirm = (id) =>
     run(id, async () => {
       await confirmBooking(id)
@@ -265,16 +285,23 @@ export default function Bookings() {
 
   const payTransport = async (event) => {
     event.preventDefault()
+    if (!phone.trim()) {
+      setPayError('Enter the mobile money phone number to continue.')
+      return
+    }
     setPayBusy(true)
     setPayError('')
     try {
-      const { data } = await createPayment(payBooking.id, provider)
+      const { data } = await createPayment(payBooking.id, provider, phone.trim(), payPurpose)
       // Simulated provider approval (in production this is the MoMo / OM webhook).
       await confirmPayment(data.payment.id)
       await load()
       loadPayments()
       setPayBooking(null)
-      toast.success(`Transport fee of ${formatCurrency(payBooking.transport_fee)} paid successfully.`)
+      setPhone('')
+      toast.success(payPurpose === 'transport_fee'
+        ? 'Transport fee paid and held in escrow.'
+        : 'Service payment completed successfully.')
     } catch (err) {
       const message = err.response?.data?.message || 'Unable to complete the transport payment.'
       setPayError(message)
@@ -282,7 +309,14 @@ export default function Bookings() {
     } finally {
       setPayBusy(false)
     }
+
   }
+
+  const release = (booking) =>
+    run(booking.id, async () => {
+      await releaseTransport(booking.id)
+      toast.success('Transport payment released to the technician.')
+    })
 
   if (loading) {
     return (
@@ -293,7 +327,7 @@ export default function Bookings() {
   }
 
   const actionsFor = (booking) => {
-    const paid = booking.transport_payment_status === 'paid'
+    const transportReleased = booking.transport_payment_status === 'released'
     const actions = []
 
     if (booking.status === 'pending') {
@@ -309,10 +343,18 @@ export default function Bookings() {
       )
     }
 
-    if (booking.status === 'accepted' && !paid) {
+    if (['accepted', 'done'].includes(booking.status) && booking.transport_payment_status === 'unpaid') {
       actions.push(
-        <button key="pay" className="btn btn-dark btn-sm" onClick={() => setPayBooking(booking)}>
+        <button key="pay" className="btn btn-dark btn-sm" onClick={() => { setPayPurpose('transport_fee'); setPayBooking(booking) }}>
           Pay transport fee
+        </button>
+      )
+    }
+
+    if (booking.status === 'accepted' && booking.transport_payment_status === 'held') {
+      actions.push(
+        <button key="release" className="btn btn-lime btn-sm" onClick={() => release(booking)}>
+          Release transport payment
         </button>
       )
     }
@@ -326,14 +368,58 @@ export default function Bookings() {
     }
 
     if (booking.status === 'done') {
+      const paymentRequired = Number(booking.transport_fee || 0) > 0 && !transportReleased
       actions.push(
         <button
           key="confirm"
           className="btn btn-lime btn-sm"
-          disabled={busyId === booking.id}
+          disabled={busyId === booking.id || paymentRequired}
           onClick={() => confirm(booking.id)}
+          title={paymentRequired ? 'Pay the transport fee first.' : undefined}
         >
           <Icon name="check" size={14} /> Confirm completion
+        </button>
+      )
+      if (paymentRequired) {
+        actions.push(
+          <span key="payment-required" className="results-count" style={{ padding: 8 }}>
+            Pay the transport fee before confirming completion.
+          </span>
+        )
+      }
+
+    }
+
+    if (['completed', 'cancelled', 'rejected'].includes(booking.status)) {
+      if (booking.status === 'completed' && booking.service_payment_status !== 'paid') {
+        actions.push(
+          booking.service?.starting_price > 0 ? (
+            <button
+              key="service-pay"
+              className="btn btn-dark btn-sm"
+              onClick={() => {
+                setPayPurpose('service_fee')
+                setPayBooking(booking)
+              }}
+            >
+              Pay service fee
+            </button>
+          ) : (
+            <span key="service-price-missing" className="results-count" style={{ padding: 8 }}>
+              The technician has not configured a service fee yet.
+            </span>
+          )
+        )
+      }
+
+      actions.push(
+        <button
+          key="clear"
+          className="btn btn-ghost btn-sm"
+          disabled={busyId === booking.id}
+          onClick={() => clear(booking.id)}
+        >
+          <Icon name="x" size={14} /> Clear booking
         </button>
       )
     }
@@ -424,6 +510,20 @@ export default function Bookings() {
               </div>
 
               {booking.notes && <div className="booking-notes">{booking.notes}</div>}
+              {booking.attachment_path && (
+                <div className="booking-notes" style={{ background: 'var(--blue-soft)' }}>
+                  <a href={`/storage/${booking.attachment_path}`} target="_blank" rel="noreferrer">
+                    View uploaded photo or video
+                  </a>
+                </div>
+              )}
+              {(booking.service_city || booking.service_address) && (
+                <div className="booking-notes" style={{ background: 'var(--blue-soft)' }}>
+                  <b>Service location</b>
+                  <br />
+                  {[booking.service_address, booking.service_city].filter(Boolean).join(', ')}
+                </div>
+              )}
 
               {booking.status === 'completed' && booking.review && (
                 <div className="booking-notes" style={{ background: 'var(--green-soft)', color: '#4c7d2c' }}>
@@ -436,9 +536,11 @@ export default function Bookings() {
               )}
 
               {['accepted', 'in_progress', 'done'].includes(booking.status) &&
-                booking.transport_payment_status === 'paid' && (
-                  <div className="booking-notes" style={{ background: 'var(--green-soft)', color: '#4c7d2c' }}>
-                    ✓ Transport fee paid through WorkMan
+                ['held', 'released'].includes(booking.transport_payment_status) && (
+                  <div className="booking-notes" style={{ background: booking.transport_payment_status === 'held' ? 'var(--gold-soft)' : 'var(--green-soft)', color: '#4c7d2c' }}>
+                    {booking.transport_payment_status === 'held'
+                      ? '✓ Transport fee paid and held in escrow — release it when the technician arrives.'
+                      : '✓ Transport fee released to the technician.'}
                   </div>
                 )}
 
@@ -450,8 +552,13 @@ export default function Bookings() {
 
       <Modal
         open={Boolean(payBooking)}
-        title="Pay transport fee"
-        onClose={() => setPayBooking(null)}
+        title={payPurpose === 'transport_fee' ? 'Pay transport fee' : 'Pay service fee'}
+        onClose={() => {
+          setPayBooking(null)
+          setPayPurpose('transport_fee')
+          setPhone('')
+          setPayError('')
+        }}
         width={420}
       >
         {payBooking && (
@@ -465,8 +572,20 @@ export default function Bookings() {
               </span>
             </div>
             <p>
-              Amount due: <b>{formatCurrency(payBooking.transport_fee)}</b> — paid through WorkMan
-              before the technician travels. The service price itself is agreed after diagnosis.
+              Amount due:{' '}
+              <b>
+                {formatCurrency(
+                  payPurpose === 'transport_fee'
+                    ? payBooking.transport_fee
+                    : payBooking.service?.starting_price
+                )}
+              </b>{' '}
+              — paid through WorkMan.
+            </p>
+            <p className="results-count">
+              {payPurpose === 'transport_fee'
+                ? 'The transport fee will be held in escrow until you release it after the technician arrives.'
+                : 'This service payment is based on the technician’s listed starting price.'}
             </p>
             <div className="field">
               <label>Payment provider</label>
@@ -478,6 +597,19 @@ export default function Bookings() {
                 ))}
               </select>
             </div>
+            <div className="field">
+              <label htmlFor="payment-phone">Mobile money phone number</label>
+              <input
+                id="payment-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="e.g. 6 70 00 00 00"
+                required
+              />
+            </div>
             {payError && <div className="form-error">{payError}</div>}
             <p className="results-count">
               Development note: provider confirmation is simulated locally.
@@ -488,7 +620,7 @@ export default function Bookings() {
                   <span className="btn-spinner" /> Processing payment…
                 </>
               ) : (
-                `Pay ${formatCurrency(payBooking.transport_fee)}`
+                `Pay ${formatCurrency(payPurpose === 'transport_fee' ? payBooking.transport_fee : payBooking.service?.starting_price)}`
               )}
             </button>
           </form>

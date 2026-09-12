@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/useToast'
-import { getProfile, updateProfile, uploadIdentityDocument } from '../../services/api'
+import {
+  getApiErrorMessage,
+  getProfile,
+  updateProfile,
+  uploadIdentityDocument,
+} from '../../services/api'
 import './dashboard-pages.css'
 
 export default function SettingsPage() {
@@ -70,6 +75,12 @@ export default function SettingsPage() {
   const handleUploadId = async (e) => {
     e.preventDefault()
     if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      const message = 'The identity document must be 5 MB or smaller.'
+      setUploadErr(message)
+      toast.error(message)
+      return
+    }
     setUploading(true)
     setUploadMsg('')
     setUploadErr('')
@@ -84,7 +95,7 @@ export default function SettingsPage() {
       toast.success('ID uploaded successfully — your verification is now pending review.')
       loadProfile()
     } catch (err) {
-      const message = err.response?.data?.message || 'Failed to upload identity document.'
+      const message = getApiErrorMessage(err, 'Failed to upload identity document.')
       setUploadErr(message)
       toast.error(message)
     } finally {
@@ -194,4 +205,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-

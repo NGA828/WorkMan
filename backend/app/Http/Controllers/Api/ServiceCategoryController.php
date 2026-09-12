@@ -14,6 +14,7 @@ class ServiceCategoryController extends Controller
     public function index(): JsonResponse
     {
         $categories = ServiceCategory::where('is_active', true)
+            ->where('approval_status', 'approved')
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'description']);
 

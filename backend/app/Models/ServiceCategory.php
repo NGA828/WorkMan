@@ -7,7 +7,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServiceCategory extends Model
 {
-    protected $fillable = ['name', 'slug', 'description', 'is_active'];
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'is_active',
+        'approval_status',
+        'requested_by',
+    ];
 
     protected $casts = [
         'is_active' => 'boolean',

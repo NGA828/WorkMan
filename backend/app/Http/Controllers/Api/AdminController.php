@@ -101,8 +101,14 @@ class AdminController extends Controller
             'name' => ['sometimes', 'string', 'max:100', 'unique:service_categories,name,' . $category->id],
             'description' => ['nullable', 'string', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
+            'approval_status' => ['sometimes', 'in:approved,rejected,pending'],
         ]);
 
+        if (($data['approval_status'] ?? null) === 'approved') {
+            $data['is_active'] = true;
+        } elseif (($data['approval_status'] ?? null) === 'rejected') {
+            $data['is_active'] = false;
+        }
         $category->update($data);
 
         return response()->json(['category' => $category]);

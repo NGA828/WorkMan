@@ -77,6 +77,8 @@ export const VERIFICATION_STATUSES = {
 export const PAYMENT_STATUSES = {
   unpaid: { label: 'Unpaid', badge: 'badge-grey' },
   paid: { label: 'Paid', badge: 'badge-green' },
+  held: { label: 'Held in escrow', badge: 'badge-gold' },
+  released: { label: 'Released', badge: 'badge-green' },
 }
 
 export function haversineKm(lat1, lng1, lat2, lng2) {

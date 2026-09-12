@@ -1,5 +1,14 @@
 import axios from 'axios'
 
+export const getApiErrorMessage = (error, fallback) => {
+  const validationErrors = error.response?.data?.errors
+  const firstValidationError = validationErrors
+    ? Object.values(validationErrors).flat()[0]
+    : null
+
+  return firstValidationError || error.response?.data?.message || fallback
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   headers: {
@@ -85,16 +94,35 @@ export const removeFavorite = (technicianId) =>
 /* ----------------------------------------------------------------- bookings */
 export const getBookings = (params) => api.get('/bookings', { params })
 export const getBooking = (id) => api.get(`/bookings/${id}`)
-export const createBooking = (payload) => api.post('/bookings', payload)
+export const clearBooking = (id) => api.delete(`/bookings/${id}`)
+export const createBooking = (payload) => {
+  if (!(payload instanceof FormData)) return api.post('/bookings', payload)
+
+  return api.post('/bookings', payload, {
+    // Allow the browser to add the multipart boundary required for file uploads.
+    headers: { 'Content-Type': undefined },
+    transformRequest: [(data) => data],
+  })
+}
+export const diagnoseBookingImage = (image, problem) => {
+  const formData = new FormData()
+  formData.append('image', image)
+  formData.append('problem', problem || '')
+  return api.post('/ai/diagnose-image', formData, {
+    headers: { 'Content-Type': undefined },
+    transformRequest: [(data) => data],
+  })
+}
 export const updateBookingStatus = (id, payload) =>
   api.patch(`/bookings/${id}/status`, payload)
 export const cancelBooking = (id) => api.post(`/bookings/${id}/cancel`)
 export const confirmBooking = (id) => api.post(`/bookings/${id}/confirm`)
+export const releaseTransport = (id) => api.post(`/bookings/${id}/release-transport`)
 
 /* ------------------------------------------------------------------ payments */
 export const getPayments = () => api.get('/payments')
-export const createPayment = (bookingId, provider) =>
-  api.post('/payments', { booking_id: bookingId, provider })
+export const createPayment = (bookingId, provider, phone, purpose = 'transport_fee') =>
+  api.post('/payments', { booking_id: bookingId, provider, phone, purpose })
 export const confirmPayment = (paymentId) =>
   api.post(`/payments/${paymentId}/confirm`)
 
@@ -103,6 +131,8 @@ export const getBookingLocation = (bookingId) =>
   api.get(`/bookings/${bookingId}/location`)
 export const updateBookingLocation = (bookingId, coords) =>
   api.put(`/bookings/${bookingId}/location`, coords)
+export const stopBookingLocation = (bookingId) =>
+  api.delete(`/bookings/${bookingId}/location`)
 
 /* ---------------------------------------------------------------- messaging */
 export const getConversations = () => api.get('/conversations')
@@ -123,6 +153,7 @@ export const markNotificationsRead = () => api.post('/notifications/read')
 /* ---------------------------------------------------------------- provider */
 export const getProviderServices = () => api.get('/provider/services')
 export const addProviderService = (payload) => api.post('/provider/services', payload)
+export const requestProviderCategory = (payload) => api.post('/provider/categories/request', payload)
 export const removeProviderService = (serviceId) =>
   api.delete(`/provider/services/${serviceId}`)
 

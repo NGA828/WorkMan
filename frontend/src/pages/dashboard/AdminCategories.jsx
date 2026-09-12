@@ -68,6 +68,19 @@ export default function AdminCategories() {
       setError(message)
       toast.error(message)
     }
+
+  }
+
+  const review = async (category, approval_status) => {
+    try {
+      await updateCategory(category.id, { approval_status })
+      await load()
+      toast.success(`Category ${approval_status === 'approved' ? 'approved' : 'rejected'}.`)
+    } catch (err) {
+      const message = err.response?.data?.message || 'Unable to review the category.'
+      setError(message)
+      toast.error(message)
+    }
   }
 
   const remove = async (id) => {
@@ -158,12 +171,18 @@ export default function AdminCategories() {
                     <span className="chip">{category.slug}</span>
                   </td>
                   <td>
-                    <span className={category.is_active ? 'badge badge-green' : 'badge badge-grey'}>
-                      {category.is_active ? 'Active' : 'Inactive'}
+                    <span className={category.approval_status === 'pending' ? 'badge badge-gold' : category.is_active ? 'badge badge-green' : 'badge badge-grey'}>
+                      {category.approval_status === 'pending' ? 'Pending review' : category.approval_status === 'rejected' ? 'Rejected' : category.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td>
                     <div className="table-actions">
+                      {category.approval_status === 'pending' && (
+                        <>
+                          <button className="btn btn-dark btn-sm" onClick={() => review(category, 'approved')}>Approve</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => review(category, 'rejected')}>Reject</button>
+                        </>
+                      )}
                       <button className="btn btn-outline btn-sm" onClick={() => toggle(category)}>
                         {category.is_active ? 'Deactivate' : 'Activate'}
                       </button>

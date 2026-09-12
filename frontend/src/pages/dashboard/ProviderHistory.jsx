@@ -4,13 +4,30 @@ import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import StarRating from '../../components/StarRating'
 import { BookingStatusBadge } from '../../components/StatusBadge'
-import { getBookings } from '../../services/api'
+import { useToast } from '../../context/useToast'
+import { clearBooking, getBookings } from '../../services/api'
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/format'
 import './dashboard-pages.css'
 
 export default function ProviderHistory() {
+  const toast = useToast()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState(null)
+
+  const clear = async (id) => {
+    if (!window.confirm('Clear this booking from your history?')) return
+    setBusyId(id)
+    try {
+      await clearBooking(id)
+      setBookings((list) => list.filter((booking) => booking.id !== id))
+      toast.success('Booking cleared from your history.')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to clear this booking.')
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   useEffect(() => {
     getBookings()
@@ -126,6 +143,18 @@ export default function ProviderHistory() {
               {booking.status === 'completed' && !booking.review && (
                 <div className="booking-notes" style={{ color: 'var(--muted)' }}>
                   No review left by client.
+                </div>
+              )}
+
+              {['completed', 'cancelled', 'rejected'].includes(booking.status) && (
+                <div className="booking-actions">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    disabled={busyId === booking.id}
+                    onClick={() => clear(booking.id)}
+                  >
+                    <Icon name="x" size={14} /> Clear booking
+                  </button>
                 </div>
               )}
             </article>

@@ -16,6 +16,7 @@ class Payment extends Model
         'purpose',
         'status',
         'provider',
+        'phone',
         'provider_transaction_id',
         'paid_at',
     ];

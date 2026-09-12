@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
+import BookingAssistant from '../../components/BookingAssistant'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import Modal from '../../components/Modal'
@@ -29,9 +30,14 @@ export default function TechnicianProfile() {
   const [loading, setLoading] = useState(true)
 
   const [bookOpen, setBookOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
+  const [serviceId, setServiceId] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
+  const [serviceCity, setServiceCity] = useState('')
+  const [serviceAddress, setServiceAddress] = useState('')
   const [duration, setDuration] = useState(60)
   const [notes, setNotes] = useState('')
+  const [bookingAttachment, setBookingAttachment] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [bookingMessage, setBookingMessage] = useState(null)
   const [bookingError, setBookingError] = useState(null)
@@ -98,19 +104,28 @@ export default function TechnicianProfile() {
     setBookingError(null)
     setBookingMessage(null)
     try {
-      await createBooking({
+      const payload = new FormData()
+      Object.entries({
         technician_profile_id: id,
-        service_id: services[0]?.id || null,
+        service_id: serviceId,
         scheduled_at: scheduledAt,
+        service_city: serviceCity,
+        service_address: serviceAddress,
         duration_minutes: duration,
         notes,
-      })
+      }).forEach(([key, value]) => payload.append(key, value ?? ''))
+      if (bookingAttachment) payload.append('attachment', bookingAttachment)
+      await createBooking(payload)
       setBookingMessage(
         'Booking request sent. The technician will review it and reply shortly — you can follow it from My bookings.'
       )
       toast.success('Booking request sent! The technician has been notified.')
       setScheduledAt('')
+      setServiceId('')
+      setServiceCity('')
+      setServiceAddress('')
       setNotes('')
+      setBookingAttachment(null)
     } catch (error) {
       const message = error.response?.data?.message || 'Unable to send the booking request.'
       setBookingError(message)
@@ -192,6 +207,9 @@ export default function TechnicianProfile() {
           <button type="button" className="btn btn-dark" onClick={() => setBookOpen(true)}>
             <Icon name="calendar" size={15} /> Book
           </button>
+          <button type="button" className="btn btn-outline" onClick={() => setAssistantOpen(true)}>
+            <Icon name="star" size={15} /> Book with AI
+          </button>
         </div>
       </div>
 
@@ -268,10 +286,33 @@ export default function TechnicianProfile() {
         onClose={() => setBookOpen(false)}
       >
         <form onSubmit={submitBooking} style={{ display: 'grid', gap: 14 }}>
+          <button type="button" className="btn btn-outline" onClick={() => setAssistantOpen(true)}>
+            Build this booking with the WorkMan assistant
+          </button>
           <p>
             Send a booking request with your preferred date and time. The technician confirms
             availability and the transport fee is paid through WorkMan after acceptance.
           </p>
+          <div className="field">
+            <label>Service</label>
+            <select
+              required
+              value={serviceId}
+              onChange={(event) => setServiceId(event.target.value)}
+              disabled={services.length === 0}
+            >
+              <option value="">Select the service you need</option>
+              {services.map((service) => (
+                <option value={service.id} key={service.id}>
+                  {service.name}
+                  {service.starting_price ? ` — from ${formatCurrency(service.starting_price)}` : ''}
+                </option>
+              ))}
+            </select>
+            {services.length === 0 && (
+              <small className="field-hint">This technician has not added a bookable service yet.</small>
+            )}
+          </div>
           <div className="field">
             <label>Preferred date and time</label>
             <input
@@ -280,6 +321,24 @@ export default function TechnicianProfile() {
               value={scheduledAt}
               min={new Date().toISOString().slice(0, 16)}
               onChange={(event) => setScheduledAt(event.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label>Service city</label>
+            <input
+              required
+              value={serviceCity}
+              onChange={(event) => setServiceCity(event.target.value)}
+              placeholder="Douala"
+            />
+          </div>
+          <div className="field">
+            <label>Service address</label>
+            <input
+              required
+              value={serviceAddress}
+              onChange={(event) => setServiceAddress(event.target.value)}
+              placeholder="Street, building, and landmark"
             />
           </div>
           <div className="field">
@@ -298,6 +357,14 @@ export default function TechnicianProfile() {
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Add a few details about the job…"
+            />
+          </div>
+          <div className="field">
+            <label>Photo or video (optional)</label>
+            <input
+              type="file"
+              accept="image/*,video/*"
+              onChange={(event) => setBookingAttachment(event.target.files?.[0] || null)}
             />
           </div>
           {bookingError && <div className="form-error">{bookingError}</div>}
@@ -319,6 +386,29 @@ export default function TechnicianProfile() {
             )}
           </button>
         </form>
+      </Modal>
+      <Modal
+        open={assistantOpen}
+        title="Build your booking"
+        onClose={() => setAssistantOpen(false)}
+        width={520}
+      >
+        <BookingAssistant
+          services={services}
+          onClose={() => setAssistantOpen(false)}
+          onApply={(draft) => {
+            setServiceId(String(draft.serviceId))
+            setServiceCity(draft.serviceCity)
+            setServiceAddress(draft.serviceAddress)
+            setScheduledAt(draft.scheduledAt)
+            setNotes(draft.notes)
+            setBookingAttachment(draft.attachment)
+            setBookingMessage(null)
+            setBookingError(null)
+            setBookOpen(true)
+            setAssistantOpen(false)
+          }}
+        />
       </Modal>
     </div>
   )

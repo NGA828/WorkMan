@@ -27,35 +27,51 @@ class PaymentController extends Controller
     }
 
     /**
-     * Create a transport-fee payment for an accepted booking.
-     *
-     * The service price itself is agreed after diagnosis; only the
-     * transport fee is paid through WorkMan.
+     * Create a payment for an eligible booking. Amounts are always calculated
+     * server-side from the booking, never trusted from the client.
      */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'booking_id' => ['required', 'exists:bookings,id'],
             'provider' => ['nullable', 'in:mtn_momo,orange_money'],
+            'phone' => ['required', 'string', 'max:30'],
+            'purpose' => ['nullable', 'in:transport_fee,service_fee'],
         ]);
 
         $booking = Booking::where('id', $data['booking_id'])
             ->where('client_id', $request->user()->id)
             ->firstOrFail();
 
-        if (!in_array($booking->status, ['accepted', 'in_progress', 'done'], true)) {
+        $purpose = $data['purpose'] ?? 'transport_fee';
+
+        if ($purpose === 'transport_fee' && $booking->status !== 'accepted') {
             return response()->json([
                 'message' => 'Transport can be paid once the technician has accepted the booking.',
             ], 422);
         }
 
-        if (!$booking->transport_fee || $booking->transport_fee <= 0) {
+        if ($purpose === 'service_fee' && $booking->status !== 'completed') {
             return response()->json([
-                'message' => 'This booking does not have a transport fee yet.',
+                'message' => 'The service can be paid after you approve the completed work.',
             ], 422);
         }
 
-        $existing = $booking->payments()->whereIn('status', ['pending', 'paid'])->latest()->first();
+        $amount = $purpose === 'service_fee'
+            ? $booking->service?->starting_price
+            : $booking->transport_fee;
+
+        if (!$amount || $amount <= 0) {
+            return response()->json([
+                'message' => 'This booking does not have a payable amount yet.',
+            ], 422);
+        }
+
+        $existing = $booking->payments()
+            ->where('purpose', $purpose)
+            ->whereIn('status', ['pending', 'paid', 'held', 'released'])
+            ->latest()
+            ->first();
 
         if ($existing) {
             return response()->json(['payment' => $existing]);
@@ -65,11 +81,12 @@ class PaymentController extends Controller
             'booking_id' => $booking->id,
             'client_id' => $request->user()->id,
             'reference' => 'WM-' . strtoupper(Str::random(12)),
-            'amount' => $booking->transport_fee,
+            'amount' => $amount,
             'currency' => 'XAF',
-            'purpose' => 'transport_fee',
+            'purpose' => $purpose,
             'status' => 'pending',
             'provider' => $data['provider'] ?? null,
+            'phone' => $data['phone'],
         ]);
 
         return response()->json(['payment' => $payment], 201);
@@ -91,12 +108,16 @@ class PaymentController extends Controller
         }
 
         $payment->update([
-            'status' => 'paid',
+            'status' => $payment->purpose === 'transport_fee' ? 'held' : 'paid',
             'paid_at' => now(),
             'provider_transaction_id' => 'SIM-' . strtoupper(Str::random(10)),
         ]);
 
-        $payment->booking()->update(['transport_payment_status' => 'paid']);
+        if ($payment->purpose === 'transport_fee') {
+            $payment->booking()->update(['transport_payment_status' => 'held']);
+        } else {
+            $payment->booking()->update(['service_payment_status' => 'paid']);
+        }
 
         $technicianUserId = $payment->booking?->technician?->user_id;
 
@@ -107,7 +128,9 @@ class PaymentController extends Controller
                 'notifiable_type' => User::class,
                 'notifiable_id' => $technicianUserId,
                 'data' => [
-                    'message' => 'Transport fee received for booking #' . $payment->booking_id . '.',
+                    'message' => $payment->purpose === 'transport_fee'
+                        ? 'Transport fee received and held in escrow for booking #' . $payment->booking_id . '.'
+                        : 'Service payment received for booking #' . $payment->booking_id . '.',
                     'booking_id' => $payment->booking_id,
                 ],
             ]);

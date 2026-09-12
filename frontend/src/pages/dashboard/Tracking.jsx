@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import 'leaflet/dist/leaflet.css'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import { Link, useParams } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
 import EmptyState from '../../components/EmptyState'
@@ -6,40 +9,117 @@ import Icon from '../../components/Icon'
 import { BookingStatusBadge } from '../../components/StatusBadge'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/useToast'
-import { getBooking, getBookingLocation, updateBookingLocation } from '../../services/api'
+import {
+  getBooking,
+  getBookingLocation,
+  stopBookingLocation,
+  updateBookingLocation,
+} from '../../services/api'
 import { formatDateTime, haversineKm, relativeTime } from '../../utils/format'
 import './dashboard-pages.css'
 
-// Demo map window around Douala, Cameroon.
-const MAP = {
-  latMin: 4.02,
-  latMax: 4.08,
-  lngMin: 9.68,
-  lngMax: 9.73,
+const technicianIcon = L.divIcon({
+  className: 'tracking-marker tracking-marker-technician',
+  html: '<span>🔧</span>',
+  iconSize: [38, 38],
+  iconAnchor: [19, 19],
+})
+
+const clientIcon = L.divIcon({
+  className: 'tracking-marker tracking-marker-client',
+  html: '<span>🏠</span>',
+  iconSize: [38, 38],
+  iconAnchor: [19, 19],
+})
+
+function FitMapToMarkers({ points }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (points.length === 1) {
+      map.setView(points[0], 15)
+    } else if (points.length > 1) {
+      map.fitBounds(points, { padding: [45, 45], maxZoom: 16 })
+    }
+  }, [map, points])
+
+  return null
 }
 
-// The client's (approximate) destination point used for the demo map.
-const DESTINATION = { latitude: 4.042, longitude: 9.701 }
+function TrackingMap({ technicianPosition, clientPosition, isProvider, technicianName }) {
+  const displayPositions = useMemo(() => {
+    if (!technicianPosition || !clientPosition) {
+      return { technician: technicianPosition, client: clientPosition }
+    }
 
-// Simulated route the technician travels along while sharing location.
-const ROUTE_START = { latitude: 4.0544, longitude: 9.6961 }
+    const sameLocation =
+      Math.abs(technicianPosition.latitude - clientPosition.latitude) < 0.0002 &&
+      Math.abs(technicianPosition.longitude - clientPosition.longitude) < 0.0002
 
-function project(lat, lng) {
-  const x = ((lng - MAP.lngMin) / (MAP.lngMax - MAP.lngMin)) * 100
-  const y = ((MAP.latMax - lat) / (MAP.latMax - MAP.latMin)) * 100
-  return { left: `${Math.min(96, Math.max(4, x))}%`, top: `${Math.min(92, Math.max(8, y))}%` }
+    if (!sameLocation) {
+      return { technician: technicianPosition, client: clientPosition }
+    }
+
+    // Keep both markers visible when GPS reports the same location.
+    const offset = 0.00018
+    return {
+      technician: {
+        latitude: technicianPosition.latitude + offset,
+        longitude: technicianPosition.longitude - offset,
+      },
+      client: {
+        latitude: clientPosition.latitude - offset,
+        longitude: clientPosition.longitude + offset,
+      },
+    }
+  }, [technicianPosition, clientPosition])
+
+  const points = useMemo(
+    () => [displayPositions.technician, displayPositions.client]
+      .filter(Boolean)
+      .map(({ latitude, longitude }) => [latitude, longitude]),
+    [displayPositions]
+  )
+  const center = points[0] || [4.0511, 9.7679]
+
+  return (
+    <MapContainer className="tracking-map" center={center} zoom={13} scrollWheelZoom>
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <FitMapToMarkers points={points} />
+      {displayPositions.client && (
+        <>
+          <Marker position={[displayPositions.client.latitude, displayPositions.client.longitude]} icon={clientIcon}>
+            <Popup>{isProvider ? 'Client location' : 'Your location'}</Popup>
+          </Marker>
+          <CircleMarker
+            center={[clientPosition.latitude, clientPosition.longitude]}
+            radius={18}
+            pathOptions={{ color: '#4d7ec9', fillColor: '#4d7ec9', fillOpacity: 0.12 }}
+          />
+        </>
+      )}
+      {displayPositions.technician && (
+        <Marker position={[displayPositions.technician.latitude, displayPositions.technician.longitude]} icon={technicianIcon}>
+          <Popup>{isProvider ? 'Your location' : `${technicianName} location`}</Popup>
+        </Marker>
+      )}
+    </MapContainer>
+  )
 }
 
 export default function Tracking() {
   const { bookingId } = useParams()
   const { isProvider } = useAuth()
   const toast = useToast()
-
   const [booking, setBooking] = useState(null)
   const [location, setLocation] = useState(null)
   const [sharing, setSharing] = useState(false)
   const [notFound, setNotFound] = useState(false)
-  const stepRef = useRef(0)
+  const [permissionMessage, setPermissionMessage] = useState('')
+  const sharingRef = useRef(false)
 
   const loadBooking = useCallback(() => {
     getBooking(bookingId)
@@ -58,123 +138,133 @@ export default function Tracking() {
     loadLocation()
   }, [loadBooking, loadLocation])
 
-  // Client: poll the technician's position while the page is open.
   useEffect(() => {
-    if (isProvider) return undefined
     const timer = setInterval(loadLocation, 4000)
     return () => clearInterval(timer)
-  }, [isProvider, loadLocation])
+  }, [loadLocation])
 
-  const pushLocation = async (coords) => {
-    try {
-      const { data } = await updateBookingLocation(bookingId, coords)
-      setLocation(data.location)
-    } catch {
-      setSharing(false)
-      toast.error('Could not share your location. Please check your connection and try again.')
+  const shareCurrentPosition = useCallback(() => {
+    if (!sharingRef.current) return
+
+    if (!navigator.geolocation) {
+      setPermissionMessage('This browser does not support location sharing.')
+      return
     }
-  }
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        if (!sharingRef.current) return
+        try {
+          const { data } = await updateBookingLocation(bookingId, {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          })
+          if (!sharingRef.current) return
+          setLocation(data.location)
+          setPermissionMessage('')
+        } catch (error) {
+          if (!sharingRef.current) return
+          sharingRef.current = false
+          setSharing(false)
+          const message =
+            error.response?.data?.message ||
+            'Could not share your location. Please check your connection and try again.'
+          setPermissionMessage(message)
+          toast.error(message)
+        }
+      },
+      (error) => {
+        if (!sharingRef.current) return
+        sharingRef.current = false
+        setSharing(false)
+        const message =
+          error.code === 1
+            ? 'Location permission was denied. Allow location access in your browser settings and try again.'
+            : error.code === 2
+              ? 'Your location is unavailable. Check your device location settings and try again.'
+              : 'Location lookup timed out. Check your connection and try again.'
+        setPermissionMessage(message)
+        toast.error(message)
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+    )
+  }, [bookingId, toast])
 
-  // Technician: simulate the journey in small steps, one position per 2.5s.
   useEffect(() => {
-    if (!sharing || !isProvider) return undefined
-
-    const timer = setInterval(() => {
-      stepRef.current += 1
-      const progress = Math.min(stepRef.current / 36, 1)
-      const jitter = (Math.random() - 0.5) * 0.002
-      const coords = {
-        latitude: ROUTE_START.latitude + (DESTINATION.latitude - ROUTE_START.latitude) * progress + jitter,
-        longitude: ROUTE_START.longitude + (DESTINATION.longitude - ROUTE_START.longitude) * progress + jitter,
-      }
-      pushLocation(coords)
-      if (progress >= 1) setSharing(false)
-    }, 2500)
-
+    if (!sharing) return undefined
+    const timer = setInterval(shareCurrentPosition, 5000)
     return () => clearInterval(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sharing, isProvider])
+  }, [sharing, shareCurrentPosition])
 
-  const startSharing = () => {
-    stepRef.current = 0
+  const toggleSharing = async () => {
+    if (sharing) {
+      sharingRef.current = false
+      setSharing(false)
+      try {
+        const { data } = await stopBookingLocation(bookingId)
+        setLocation(data.location)
+        toast.info('Location sharing stopped.')
+      } catch (error) {
+        const message =
+          error.response?.data?.message || 'Location sharing stopped locally, but could not clear the server location.'
+        setPermissionMessage(message)
+        toast.error(message)
+      }
+      return
+    }
+
+    if (!navigator.geolocation) {
+      setPermissionMessage('This browser does not support location sharing.')
+      return
+    }
+
+    // Start the first request from the click handler so browsers can show the
+    // location permission prompt as a direct user-initiated action.
+    setPermissionMessage('')
+    sharingRef.current = true
     setSharing(true)
-    pushLocation(ROUTE_START)
-    toast.success('Sharing your live location with the client.')
-  }
-
-  const stopSharing = () => {
-    setSharing(false)
-    toast.info('Location sharing stopped.')
+    shareCurrentPosition()
   }
 
   if (notFound) {
     return (
-      <EmptyState
-        icon="pin"
-        title="Booking not found"
-        text="This booking may belong to another account."
-      >
-        <Link className="btn btn-dark" to="/dashboard/bookings">
-          Back to bookings
-        </Link>
+      <EmptyState icon="pin" title="Booking not found" text="This booking may belong to another account.">
+        <Link className="btn btn-dark" to="/dashboard/bookings">Back to bookings</Link>
       </EmptyState>
     )
   }
 
   if (!booking) {
-    return (
-      <div className="page-loader">
-        <div className="spinner" />
-      </div>
-    )
+    return <div className="page-loader"><div className="spinner" /></div>
   }
 
-  const hasLocation = Boolean(location)
-  const distance = hasLocation
-    ? haversineKm(location.latitude, location.longitude, DESTINATION.latitude, DESTINATION.longitude)
+  const technicianPosition = location?.latitude != null && location?.longitude != null
+    ? { latitude: Number(location.latitude), longitude: Number(location.longitude) }
     : null
-
-  const markerPos = hasLocation ? project(Number(location.latitude), Number(location.longitude)) : null
-  const homePos = project(DESTINATION.latitude, DESTINATION.longitude)
+  const clientPosition = location?.client_latitude != null && location?.client_longitude != null
+    ? { latitude: Number(location.client_latitude), longitude: Number(location.client_longitude) }
+    : null
+  const distance = technicianPosition && clientPosition
+    ? haversineKm(technicianPosition.latitude, technicianPosition.longitude, clientPosition.latitude, clientPosition.longitude)
+    : null
 
   return (
     <div className="tracking-layout">
       <section className="map-panel">
-        <div className="map-grid" />
-        <div className="map-road h" />
-        <div className="map-road v" />
-
-        {homePos && (
-          <div className="map-marker home" style={{ left: homePos.left, top: homePos.top }}>
-            <span className="map-marker-pin">
-              <Icon name="home" size={14} />
-            </span>
-            <span className="map-marker-label">
-              {isProvider ? 'Client' : 'Your location'}
-            </span>
-          </div>
-        )}
-
-        {markerPos && (
-          <div className="map-marker" style={{ left: markerPos.left, top: markerPos.top }}>
-            <span className="map-marker-pin">
-              <Icon name="wrench" size={14} />
-            </span>
-            <span className="map-marker-label">{booking.technician?.user?.name?.split(' ')[0]}</span>
-          </div>
-        )}
-
+        <TrackingMap
+          technicianPosition={technicianPosition}
+          clientPosition={clientPosition}
+          isProvider={isProvider}
+          technicianName={booking.technician?.user?.name}
+        />
         <div className="map-badge">
-          {hasLocation ? (
-            <>
-              <b>{distance ? `${distance.toFixed(1)} km away` : 'Arriving…'}</b>
-              <small>Updated {relativeTime(location.recorded_at)}</small>
-            </>
+          {distance !== null ? (
+            <><b>{distance.toFixed(1)} km apart</b><small>Both locations are visible and updating</small></>
+          ) : isProvider && clientPosition ? (
+            <><b>Client location available</b><small>Client updated {relativeTime(location.client_recorded_at)}</small></>
+          ) : !isProvider && technicianPosition ? (
+            <><b>Technician location available</b><small>Technician updated {relativeTime(location.recorded_at)}</small></>
           ) : (
-            <>
-              <b>No live position yet</b>
-              <small>Location appears when the technician shares it.</small>
-            </>
+            <><b>Waiting for locations</b><small>Share your location to show it to the other participant.</small></>
           )}
         </div>
       </section>
@@ -189,40 +279,23 @@ export default function Tracking() {
             </div>
             <BookingStatusBadge status={booking.status} />
           </div>
-
           <div className="booking-details">
-            <span>
-              <Icon name="calendar" size={15} /> {formatDateTime(booking.scheduled_at)}
-            </span>
+            <span><Icon name="calendar" size={15} /> {formatDateTime(booking.scheduled_at)}</span>
+            {booking.service_address && <span><Icon name="pin" size={15} /> {booking.service_address}, {booking.service_city}</span>}
           </div>
-
           <div className="booking-actions">
-            {isProvider ? (
-              <>
-                {['accepted', 'in_progress'].includes(booking.status) && (
-                  <button
-                    className={sharing ? 'btn btn-outline btn-sm' : 'btn btn-dark btn-sm'}
-                    onClick={sharing ? stopSharing : startSharing}
-                  >
-                    <Icon name="pin" size={14} />
-                    {sharing ? 'Stop sharing' : 'Share my location'}
-                  </button>
-                )}
-                <Link className="btn btn-ghost btn-sm" to="/dashboard/jobs">
-                  Back to job requests
-                </Link>
-              </>
-            ) : (
-              <Link className="btn btn-outline btn-sm" to="/dashboard/bookings">
-                Back to bookings
-              </Link>
+            {['accepted', 'in_progress'].includes(booking.status) && (
+              <button
+                className={sharing ? 'btn btn-outline btn-sm' : 'btn btn-dark btn-sm'}
+                onClick={toggleSharing}
+              >
+                <Icon name="pin" size={14} /> {sharing ? 'Stop sharing' : 'Share my location'}
+              </button>
             )}
+            <Link className="btn btn-ghost btn-sm" to={isProvider ? '/dashboard/jobs' : '/dashboard/bookings'}>Back</Link>
           </div>
-
-          <p className="results-count">
-            GPS tracking gives the client confidence that the technician is really travelling to
-            the appointment. The technician&apos;s position is shared only for accepted bookings.
-          </p>
+          {permissionMessage && <div className="form-error">{permissionMessage}</div>}
+          <p className="results-count">The map uses your device GPS and the technician&apos;s shared GPS position. Location sharing is available only for accepted bookings.</p>
         </section>
       </aside>
     </div>

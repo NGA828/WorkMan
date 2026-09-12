@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Models\TechnicianProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class TechnicianServiceController extends Controller
 {
@@ -39,6 +40,40 @@ class TechnicianServiceController extends Controller
         $service = $profile->services()->create($data);
 
         return response()->json(['service' => $service->load('category')], 201);
+    }
+
+    public function requestCategory(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $profile = TechnicianProfile::firstOrCreate(['user_id' => $request->user()->id]);
+        $existing = \App\Models\ServiceCategory::whereRaw('LOWER(name) = ?', [mb_strtolower($data['name'])])->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => $existing->approval_status === 'approved'
+                    ? 'This category already exists. Select it from the list.'
+                    : 'This category is already awaiting administrator review.',
+                'category' => $existing,
+            ], 422);
+        }
+
+        $category = \App\Models\ServiceCategory::create([
+            'name' => trim($data['name']),
+            'slug' => Str::slug($data['name']) . '-' . Str::lower(Str::random(5)),
+            'description' => $data['description'] ?? null,
+            'is_active' => false,
+            'approval_status' => 'pending',
+            'requested_by' => $profile->id,
+        ]);
+
+        return response()->json([
+            'message' => 'Category submitted for administrator review.',
+            'category' => $category,
+        ], 201);
     }
 
     /**

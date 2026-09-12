@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Icon from './Icon'
 
 export default function Modal({ open, title, onClose, children, footer = null, width = 460 }) {
@@ -8,16 +9,17 @@ export default function Modal({ open, title, onClose, children, footer = null, w
       if (event.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
+    const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      document.body.style.overflow = previousOverflow
     }
   }, [open, onClose])
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: width }} role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
@@ -29,6 +31,7 @@ export default function Modal({ open, title, onClose, children, footer = null, w
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

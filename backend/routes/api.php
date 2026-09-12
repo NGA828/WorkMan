@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AiDiagnosisController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\HealthController;
@@ -57,7 +58,10 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
     // Bookings — shared between client and technician
     Route::get('/bookings', [BookingController::class, 'index']);
     Route::get('/bookings/{booking}', [BookingController::class, 'show']);
+    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy']);
     Route::get('/bookings/{booking}/location', [LocationController::class, 'show']);
+    Route::put('/bookings/{booking}/location', [LocationController::class, 'update']);
+    Route::delete('/bookings/{booking}/location', [LocationController::class, 'destroy']);
 
     // Payments — created and paid by clients
     Route::get('/payments', [PaymentController::class, 'index']);
@@ -73,8 +77,10 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
     */
     Route::middleware('role:client')->group(function () {
         Route::post('/bookings', [BookingController::class, 'store']);
+        Route::post('/ai/diagnose-image', [AiDiagnosisController::class, 'diagnose']);
         Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
         Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm']);
+        Route::post('/bookings/{booking}/release-transport', [BookingController::class, 'releaseTransport']);
 
         Route::post('/payments', [PaymentController::class, 'store']);
         Route::post('/payments/{payment}/confirm', [PaymentController::class, 'confirm']);
@@ -94,6 +100,7 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
         Route::get('/provider/services', [TechnicianServiceController::class, 'index']);
         Route::post('/provider/services', [TechnicianServiceController::class, 'store']);
         Route::delete('/provider/services/{service}', [TechnicianServiceController::class, 'destroy']);
+        Route::post('/provider/categories/request', [TechnicianServiceController::class, 'requestCategory']);
 
         // Professional profile: service areas
         Route::get('/provider/locations', [ProviderLocationController::class, 'index']);
@@ -110,8 +117,6 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
         // Booking lifecycle (accept, reject, start, finish)
         Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus']);
 
-        // Live location sharing for accepted bookings
-        Route::put('/bookings/{booking}/location', [LocationController::class, 'update']);
     });
 
     /*

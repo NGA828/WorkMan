@@ -166,6 +166,20 @@ export default function ProviderJobs() {
               </div>
 
               {booking.notes && <div className="booking-notes">{booking.notes}</div>}
+              {booking.attachment_path && (
+                <div className="booking-notes" style={{ background: 'var(--blue-soft)' }}>
+                  <a href={`/storage/${booking.attachment_path}`} target="_blank" rel="noreferrer">
+                    View client photo or video
+                  </a>
+                </div>
+              )}
+              {(booking.service_city || booking.service_address) && (
+                <div className="booking-notes" style={{ background: 'var(--blue-soft)' }}>
+                  <b>Service location</b>
+                  <br />
+                  {[booking.service_address, booking.service_city].filter(Boolean).join(', ')}
+                </div>
+              )}
 
               <div className="booking-actions">
                 {booking.status === 'pending' && (
@@ -192,13 +206,19 @@ export default function ProviderJobs() {
                 )}
 
                 {booking.status === 'accepted' && (
-                  <button
-                    className="btn btn-dark btn-sm"
-                    disabled={busyId === booking.id}
-                    onClick={() => run(booking.id, { status: 'in_progress' })}
-                  >
-                    Start job
-                  </button>
+                  booking.transport_fee > 0 && booking.transport_payment_status !== 'released' ? (
+                    <span className="results-count" style={{ padding: 8 }}>
+                      Waiting for the client to release the transport payment.
+                    </span>
+                  ) : (
+                    <button
+                      className="btn btn-dark btn-sm"
+                      disabled={busyId === booking.id}
+                      onClick={() => run(booking.id, { status: 'in_progress' })}
+                    >
+                      Start job
+                    </button>
+                  )
                 )}
 
                 {booking.status === 'in_progress' && (
@@ -225,8 +245,8 @@ export default function ProviderJobs() {
 
                 {booking.status === 'completed' && (
                   <span className="results-count" style={{ padding: 8 }}>
-                    {booking.transport_payment_status === 'paid'
-                      ? '✓ Job completed and transport paid.'
+                    {['held', 'released'].includes(booking.transport_payment_status)
+                      ? '✓ Job completed and transport payment recorded.'
                       : '✓ Job completed.'}
                   </span>
                 )}

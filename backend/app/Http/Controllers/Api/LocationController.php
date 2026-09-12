@@ -23,11 +23,12 @@ class LocationController extends Controller
     }
 
     /**
-     * Technician shares a live GPS position for an accepted booking.
+     * A participant shares their live GPS position for an accepted booking.
      */
     public function update(Request $request, Booking $booking): JsonResponse
     {
-        abort_unless($booking->technician?->user_id === $request->user()->id, 403);
+        [$isClient, $isTechnician] = $this->participantRoles($request, $booking);
+        abort_unless($isTechnician || $isClient, 403);
 
         if (!in_array($booking->status, ['accepted', 'in_progress'], true)) {
             return response()->json([
@@ -40,19 +41,82 @@ class LocationController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
-        $location = BookingLocation::updateOrCreate(
-            ['booking_id' => $booking->id],
-            [...$data, 'recorded_at' => Carbon::now()]
-        );
+        $location = BookingLocation::firstOrNew(['booking_id' => $booking->id]);
+        if ($isTechnician) {
+            $location->fill([...$data, 'recorded_at' => Carbon::now()]);
+        } else {
+            $location->fill([
+                'client_latitude' => $data['latitude'],
+                'client_longitude' => $data['longitude'],
+                'client_recorded_at' => Carbon::now(),
+            ]);
+        }
+        $location->save();
 
         return response()->json(['location' => $location]);
     }
 
+    /**
+     * Stop sharing the authenticated participant's location for this booking.
+     */
+    public function destroy(Request $request, Booking $booking): JsonResponse
+    {
+        [$isClient, $isTechnician] = $this->participantRoles($request, $booking);
+        abort_unless($isTechnician || $isClient, 403);
+
+        $location = $booking->location;
+        if (!$location) {
+            return response()->json(['location' => null]);
+        }
+
+        if ($isTechnician) {
+            $location->forceFill([
+                'latitude' => null,
+                'longitude' => null,
+                'recorded_at' => null,
+            ]);
+        } else {
+            $location->forceFill([
+                'client_latitude' => null,
+                'client_longitude' => null,
+                'client_recorded_at' => null,
+            ]);
+        }
+
+        if (
+            $location->latitude === null
+            && $location->longitude === null
+            && $location->client_latitude === null
+            && $location->client_longitude === null
+        ) {
+            $location->delete();
+        } else {
+            $location->save();
+        }
+
+        return response()->json(['location' => $booking->fresh('location')->location]);
+    }
+
     private function authorizeBooking(Request $request, Booking $booking): void
     {
-        $isClient = $booking->client_id === $request->user()->id;
-        $isTechnician = $booking->technician?->user_id === $request->user()->id;
+        [$isClient, $isTechnician] = $this->participantRoles($request, $booking);
 
         abort_unless($isClient || $isTechnician, 403);
+    }
+
+    /**
+     * Resolve access through the relationships so ID casts cannot reject a valid
+     * participant when the database driver returns numeric IDs as strings.
+     *
+     * @return array{bool, bool}
+     */
+    private function participantRoles(Request $request, Booking $booking): array
+    {
+        $userId = $request->user()->getKey();
+
+        return [
+            $booking->client()->whereKey($userId)->exists(),
+            $booking->technician()->where('user_id', $userId)->exists(),
+        ];
     }
 }

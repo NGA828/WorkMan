@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'ai' => [
+        'provider' => env('AI_PROVIDER', 'openrouter'),
+        'key' => env('AI_API_KEY'),
+        'model' => env('AI_MODEL', 'google/gemini-2.0-flash-exp:free'),
+        'ca_bundle' => env('AI_CA_BUNDLE'),
+    ],
+
 ];

@@ -27,7 +27,7 @@ class BookingController extends Controller
             ->with([
                 'client:id,name',
                 'technician.user:id,name',
-                'service:id,name',
+                'service:id,name,starting_price',
                 'review:id,booking_id,rating',
             ])
             ->when($request->filled('status'), function ($query) use ($request) {
@@ -50,8 +50,9 @@ class BookingController extends Controller
      */
     public function show(Request $request, Booking $booking): JsonResponse
     {
-        $isClient = $booking->client_id === $request->user()->id;
-        $isTechnician = $booking->technician?->user_id === $request->user()->id;
+        $userId = (int) $request->user()->id;
+        $isClient = (int) $booking->client_id === $userId;
+        $isTechnician = (int) $booking->technician?->user_id === $userId;
 
         abort_unless($isClient || $isTechnician, 403);
 
@@ -59,7 +60,7 @@ class BookingController extends Controller
             'booking' => $booking->load([
                 'client:id,name',
                 'technician.user:id,name',
-                'service:id,name',
+                'service:id,name,starting_price',
                 'review:id,booking_id,rating,body',
             ]),
         ]);
@@ -72,10 +73,13 @@ class BookingController extends Controller
     {
         $data = $request->validate([
             'technician_profile_id' => ['required', 'exists:technician_profiles,id'],
-            'service_id' => ['nullable', 'exists:services,id'],
+            'service_id' => ['required', 'exists:services,id'],
             'scheduled_at' => ['required', 'date', 'after:now'],
+            'service_city' => ['required', 'string', 'max:100'],
+            'service_address' => ['required', 'string', 'max:255'],
             'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:480'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,mp4,mov,webm', 'max:20480'],
         ]);
 
         $technician = TechnicianProfile::where('id', $data['technician_profile_id'])
@@ -86,8 +90,14 @@ class BookingController extends Controller
             return response()->json(['message' => 'This technician is currently unavailable.'], 422);
         }
 
+        if (!$technician->services()->whereKey($data['service_id'])->exists()) {
+            return response()->json([
+                'message' => 'Please select a service offered by this technician.',
+            ], 422);
+        }
+
         $when = Carbon::parse($data['scheduled_at']);
-        $duration = $data['duration_minutes'] ?? 60;
+        $duration = (int) ($data['duration_minutes'] ?? 60);
 
         // Respect the technician's weekly working hours.
         $hours = $technician->workingHours()
@@ -123,6 +133,9 @@ class BookingController extends Controller
                 'scheduled_at' => $when,
                 'duration_minutes' => $duration,
                 'status' => 'pending',
+                'attachment_path' => $request->hasFile('attachment')
+                    ? $request->file('attachment')->store('booking-attachments', 'public')
+                    : null,
             ]);
 
             $this->notify(
@@ -136,7 +149,7 @@ class BookingController extends Controller
         });
 
         return response()->json([
-            'booking' => $booking->load(['technician.user:id,name', 'service:id,name']),
+            'booking' => $booking->load(['technician.user:id,name', 'service:id,name,starting_price']),
         ], 201);
     }
 
@@ -155,8 +168,9 @@ class BookingController extends Controller
 
         $allowed = match ($data['status']) {
             'accepted', 'rejected' => $booking->status === 'pending',
-            'in_progress' => $booking->status === 'accepted',
-            'done' => in_array($booking->status, ['accepted', 'in_progress'], true),
+            'in_progress' => $booking->status === 'accepted'
+                && (!$booking->transport_fee || $booking->transport_payment_status === 'released'),
+            'done' => $booking->status === 'in_progress',
             default => false,
         };
 
@@ -190,8 +204,46 @@ class BookingController extends Controller
         }
 
         return response()->json([
-            'booking' => $booking->load(['client:id,name', 'technician.user:id,name', 'service:id,name']),
+            'booking' => $booking->load(['client:id,name', 'technician.user:id,name', 'service:id,name,starting_price']),
         ]);
+    }
+
+    /**
+     * Client releases the held transport fee after the technician arrives.
+     */
+    public function releaseTransport(Request $request, Booking $booking): JsonResponse
+    {
+        abort_unless($booking->client_id === $request->user()->id, 403);
+
+        if ($booking->status !== 'accepted' || $booking->transport_payment_status !== 'held') {
+            return response()->json([
+                'message' => 'Transport must be paid and held in escrow before it can be released.',
+            ], 422);
+        }
+
+        $payment = $booking->payments()
+            ->where('purpose', 'transport_fee')
+            ->where('status', 'held')
+            ->latest()
+            ->first();
+
+        if (!$payment) {
+            return response()->json(['message' => 'The held transport payment could not be found.'], 422);
+        }
+
+        $payment->update(['status' => 'released']);
+        $booking->update(['transport_payment_status' => 'released']);
+
+        if ($booking->technician?->user_id) {
+            $this->notify(
+                $booking->technician->user_id,
+                'payment.transport_released',
+                'The client released the transport fee. You can now start work.',
+                ['booking_id' => $booking->id]
+            );
+        }
+
+        return response()->json(['booking' => $booking->fresh()]);
     }
 
     /**
@@ -203,6 +255,16 @@ class BookingController extends Controller
 
         if ($booking->status !== 'done') {
             return response()->json(['message' => 'Only finished work can be confirmed.'], 422);
+        }
+
+        if (
+            $booking->transport_fee
+            && $booking->transport_fee > 0
+            && $booking->transport_payment_status !== 'released'
+        ) {
+            return response()->json([
+                'message' => 'Please release the held transport fee before confirming completion.',
+            ], 422);
         }
 
         $booking->update(['status' => 'completed']);
@@ -246,6 +308,30 @@ class BookingController extends Controller
         return response()->json([
             'booking' => $booking->load(['technician.user:id,name']),
         ]);
+    }
+
+    /**
+     * Remove a completed or cancelled booking from the authenticated user's
+     * history without allowing either participant to affect the other user's
+     * unrelated bookings.
+     */
+    public function destroy(Request $request, Booking $booking): JsonResponse
+    {
+        $userId = $request->user()->getKey();
+        $isClient = $booking->client()->whereKey($userId)->exists();
+        $isTechnician = $booking->technician()->where('user_id', $userId)->exists();
+
+        abort_unless($isClient || $isTechnician, 403);
+
+        if (!in_array($booking->status, ['completed', 'cancelled', 'rejected'], true)) {
+            return response()->json([
+                'message' => 'Only completed, cancelled, or rejected bookings can be cleared.',
+            ], 422);
+        }
+
+        $booking->delete();
+
+        return response()->json(['message' => 'Booking cleared from your history.']);
     }
 
     /**

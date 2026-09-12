@@ -14,10 +14,14 @@ class Booking extends Model
         'technician_profile_id',
         'service_id',
         'scheduled_at',
+        'service_city',
+        'service_address',
         'duration_minutes',
         'notes',
+        'attachment_path',
         'transport_fee',
         'transport_payment_status',
+        'service_payment_status',
         'status',
     ];
 

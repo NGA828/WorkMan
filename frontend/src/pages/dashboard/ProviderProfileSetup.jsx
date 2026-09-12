@@ -10,6 +10,8 @@ import {
   getProviderLocations,
   getProviderServices,
   getProviderWorkingHours,
+  getApiErrorMessage,
+  requestProviderCategory,
   removeProviderLocation,
   removeProviderService,
   updateProfile,
@@ -50,6 +52,8 @@ export default function ProviderProfileSetup() {
   const [uploadErr, setUploadErr] = useState('')
 
   const [serviceForm, setServiceForm] = useState({ service_category_id: '', name: '', starting_price: '' })
+  const [customCategory, setCustomCategory] = useState('')
+  const [categoryRequestMsg, setCategoryRequestMsg] = useState('')
   const [locationForm, setLocationForm] = useState({ city: '', neighborhood: '' })
 
   const [basicsMsg, setBasicsMsg] = useState('')
@@ -135,6 +139,22 @@ export default function ProviderProfileSetup() {
       setError(message)
       toast.error(message)
     }
+
+  }
+
+  const requestCategory = async (event) => {
+    event.preventDefault()
+    setCategoryRequestMsg('')
+    try {
+      await requestProviderCategory({ name: customCategory })
+      setCustomCategory('')
+      setCategoryRequestMsg('Category submitted. An administrator must approve it before it can be selected.')
+      toast.success('Category submitted for review.')
+    } catch (err) {
+      const message = err.response?.data?.message || 'Unable to submit the category.'
+      setCategoryRequestMsg(message)
+      toast.error(message)
+    }
   }
 
   const removeService = async (id) => {
@@ -201,6 +221,12 @@ export default function ProviderProfileSetup() {
   const handleUploadId = async (event) => {
     event.preventDefault()
     if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      const message = 'The identity document must be 5 MB or smaller.'
+      setUploadErr(message)
+      toast.error(message)
+      return
+    }
     setUploading(true)
     setUploadMsg('')
     setUploadErr('')
@@ -214,7 +240,7 @@ export default function ProviderProfileSetup() {
       const profileRes = await getProfile()
       setProfile(profileRes.data.profile || {})
     } catch (err) {
-      const message = err.response?.data?.message || 'Unable to upload the ID document.'
+      const message = getApiErrorMessage(err, 'Unable to upload the ID document.')
       setUploadErr(message)
       toast.error(message)
     } finally {
@@ -362,6 +388,7 @@ export default function ProviderProfileSetup() {
                   </option>
                 ))}
               </select>
+              <small className="results-count">Can&apos;t find it? Request a new category below.</small>
             </div>
             <div className="field">
               <label>Service name</label>
@@ -371,6 +398,20 @@ export default function ProviderProfileSetup() {
                 onChange={(event) => setServiceForm({ ...serviceForm, name: event.target.value })}
                 placeholder="e.g. Leak repair"
               />
+            </div>
+            <div className="field">
+              <label>Request a custom category</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={customCategory}
+                  onChange={(event) => setCustomCategory(event.target.value)}
+                  placeholder="e.g. Solar installation"
+                />
+                <button className="btn btn-outline btn-sm" type="button" disabled={!customCategory.trim()} onClick={requestCategory}>
+                  Request
+                </button>
+              </div>
+              {categoryRequestMsg && <small className="results-count">{categoryRequestMsg}</small>}
             </div>
             <div className="field">
               <label>Starting price (FCFA)</label>
