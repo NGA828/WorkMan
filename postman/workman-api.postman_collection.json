@@ -1,0 +1,1277 @@
+{
+  "info": {
+    "_postman_id": "d3b9c7e2-4a61-4f8b-9c5d-2e7a1b0c3f48",
+    "name": "WorkMan API",
+    "description": "API test collection for the WorkMan service platform (Laravel backend).\n\nCovers the full journey against the seeded demo environment:\n1. Public discovery (health, categories, technician search, profiles, reviews)\n2. Authentication (client / technician / admin, token handling, 401 guard)\n3. Client booking request + favorites\n4. Technician acceptance with transport fee\n5. Transport payment via mobile money, escrow hold/release, live location, work lifecycle, completion + review\n6. Admin dashboard, verification approvals, user management\n\nEnvironment variable: `baseUrl` → `http://localhost:8000/api` (or any deployed instance).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "clientToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clientId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "technicianToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bookingId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "scheduledAt",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Public",
+      "item": [
+        {
+          "id": "req-1",
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Status is ok\", function () { pm.expect(pm.response.json().status).to.eql(\"ok\"); });\npm.test(\"Timestamp is present\", function () { pm.expect(pm.response.json().timestamp).to.be.a(\"string\").and.not.empty; });\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-2",
+          "name": "List Service Categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Returns at least one category\", function () {\n  const cats = pm.response.json().categories;\n  pm.expect(cats).to.be.an(\"array\").that.is.not.empty;\n});\npm.test(\"Every category has a name and slug\", function () {\n  pm.response.json().categories.forEach(function (c) {\n    pm.expect(c.name).to.be.a(\"string\");\n    pm.expect(c.slug).to.be.a(\"string\");\n  });\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-3",
+          "name": "Search Technicians in Douala",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Only approved technicians are public\", function () {\n  pm.response.json().technicians.data.forEach(function (t) {\n    pm.expect(t.verification_status).to.eql(\"approved\");\n  });\n});\npm.test(\"Paginated with per_page 12\", function () { pm.expect(pm.response.json().technicians.per_page).to.eql(12); });\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/technicians?city=Douala",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "technicians"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Douala"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-4",
+          "name": "Technician Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Returns Michael Kone\", function () { pm.expect(pm.response.json().technician.user.name).to.eql(\"Michael Kone\"); });\npm.test(\"Has services with categories\", function () {\n  const t = pm.response.json().technician;\n  pm.expect(t.services).to.be.an(\"array\").that.is.not.empty;\n  t.services.forEach(function (s) { pm.expect(s.category.name).to.be.a(\"string\"); });\n});\npm.test(\"Has 2 service areas\", function () { pm.expect(pm.response.json().technician.locations.length).to.eql(2); });\npm.test(\"Has full weekly working hours\", function () { pm.expect(pm.response.json().technician.workingHours.length).to.eql(7); });\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/technicians/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "technicians",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-5",
+          "name": "Technician Reviews",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Has at least 3 reviews\", function () { pm.expect(pm.response.json().reviews.total).to.be.at.least(3); });\npm.test(\"Every review has a client name\", function () {\n  pm.response.json().reviews.data.forEach(function (r) { pm.expect(r.client.name).to.be.a(\"string\"); });\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/technicians/1/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "technicians",
+                "1",
+                "reviews"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Authentication",
+      "item": [
+        {
+          "id": "req-6",
+          "name": "Log In — Client",
+          "description": "Signs in Awa Diallo (client) and stores her bearer token for the rest of the run.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Returns a 64-char bearer token\", function () {\n  const token = pm.response.json().token;\n  pm.expect(token).to.be.a(\"string\").with.lengthOf(64);\n});\npm.test(\"User is the client account\", function () {\n  const user = pm.response.json().user;\n  pm.expect(user.email).to.eql(\"client@workman.local\");\n  pm.expect(user.role).to.eql(\"client\");\n});\npm.collectionVariables.set(\"clientToken\", pm.response.json().token);\npm.collectionVariables.set(\"clientId\", pm.response.json().user.id);\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"client@workman.local\",\n  \"password\": \"password\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-7",
+          "name": "Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Authenticated as the client\", function () {\n  const user = pm.response.json().user;\n  pm.expect(user.role).to.eql(\"client\");\n  pm.expect(user.id).to.eql(Number(pm.collectionVariables.get(\"clientId\")));\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-8",
+          "name": "Client Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Returns the client profile\", function () {\n  const profile = pm.response.json().profile;\n  pm.expect(profile.city).to.eql(\"Douala\");\n  pm.expect(profile.phone).to.be.a(\"string\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-9",
+          "name": "Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Notifications list and unread count\", function () {\n  const body = pm.response.json();\n  pm.expect(body.notifications).to.be.an(\"array\");\n  pm.expect(body.unread_count).to.be.a(\"number\").that.is.at.least(0);\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-10",
+          "name": "Log In — Technician",
+          "description": "Signs in Michael Kone (plumbing technician, verified).",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"User is a provider\", function () {\n  pm.expect(pm.response.json().user.role).to.eql(\"provider\");\n});\npm.collectionVariables.set(\"technicianToken\", pm.response.json().token);\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"michael@workman.local\",\n  \"password\": \"password\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-11",
+          "name": "Log In — Admin",
+          "description": "Signs in the platform administrator.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"User is the admin\", function () {\n  pm.expect(pm.response.json().user.role).to.eql(\"admin\");\n});\npm.collectionVariables.set(\"adminToken\", pm.response.json().token);\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@workman.local\",\n  \"password\": \"password\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-12",
+          "name": "Unauthenticated Access Blocked",
+          "description": "No Authorization header — the API must reject with 401.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 401\", function () { pm.response.to.have.status(401); });\npm.test(\"Returns the unauthenticated message\", function () {\n  pm.expect(pm.response.json().message).to.eql(\"Unauthenticated.\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Client · Discovery & Booking",
+      "item": [
+        {
+          "id": "req-13",
+          "name": "My Bookings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Bookings exist\", function () {\n  pm.expect(pm.response.json().bookings.data).to.be.an(\"array\").that.is.not.empty;\n});\npm.test(\"Only the client's own bookings are returned\", function () {\n  pm.response.json().bookings.data.forEach(function (b) {\n    pm.expect(b.client.id).to.eql(Number(pm.collectionVariables.get(\"clientId\")));\n  });\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-14",
+          "name": "Create Booking Request",
+          "description": "Books Michael Kone (Leak repair) for the next weekday at 10:00 UTC — inside his working hours.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\n// Next weekday (Mon–Fri) at 10:00 UTC — inside Michael's 08:00–18:00 working hours.\nconst d = new Date();\nd.setUTCHours(10, 0, 0, 0);\nwhile (d.getUTCDay() === 0 || d.getUTCDay() === 6) { d.setUTCDate(d.getUTCDate() + 1); }\npm.collectionVariables.set(\"scheduledAt\", d.toISOString());\n"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 201\", function () { pm.response.to.have.status(201); });\npm.test(\"Booking starts in pending state\", function () {\n  pm.expect(pm.response.json().booking.status).to.eql(\"pending\");\n});\npm.test(\"Booking belongs to the client\", function () {\n  pm.expect(pm.response.json().booking.client_id).to.eql(Number(pm.collectionVariables.get(\"clientId\")));\n});\npm.test(\"Technician and service are attached\", function () {\n  const b = pm.response.json().booking;\n  pm.expect(b.technician.user.name).to.eql(\"Michael Kone\");\n  pm.expect(b.service.name).to.eql(\"Leak repair\");\n});\npm.collectionVariables.set(\"bookingId\", pm.response.json().booking.id);\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technician_profile_id\": 1,\n  \"service_id\": 1,\n  \"scheduled_at\": \"{{scheduledAt}}\",\n  \"service_city\": \"Douala\",\n  \"service_address\": \"Rue Joffre, Akwa\",\n  \"duration_minutes\": 60,\n  \"notes\": \"Automated API test — please ignore.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-15",
+          "name": "Booking Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Returns the created booking\", function () {\n  const b = pm.response.json().booking;\n  pm.expect(b.id).to.eql(Number(pm.collectionVariables.get(\"bookingId\")));\n  pm.expect(b.status).to.eql(\"pending\");\n  pm.expect(b.service.name).to.eql(\"Leak repair\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-16",
+          "name": "Favorite Technician",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 201\", function () { pm.response.to.have.status(201); });\npm.test(\"Favorite saved\", function () { pm.expect(pm.response.json().favorite).to.be.true; });\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/technicians/1/favorite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "technicians",
+                "1",
+                "favorite"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-17",
+          "name": "My Favorites",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Michael is in the favorites\", function () {\n  const ids = pm.response.json().technicians.map(function (t) { return t.id; });\n  pm.expect(ids).to.include(1);\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/favorites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "favorites"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Technician · Acceptance",
+      "item": [
+        {
+          "id": "req-18",
+          "name": "My Services",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Returns the technician's services\", function () {\n  const services = pm.response.json().services;\n  pm.expect(services.length).to.eql(2);\n  services.forEach(function (s) { pm.expect(s.category.name).to.be.a(\"string\"); });\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/provider/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "provider",
+                "services"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-19",
+          "name": "Working Hours",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Seven weekly entries\", function () {\n  pm.expect(pm.response.json().working_hours.length).to.eql(7);\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/provider/working-hours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "provider",
+                "working-hours"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-20",
+          "name": "Accept Booking",
+          "description": "Michael accepts Awa's booking request and sets a 1,500 FCFA transport fee.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Booking was accepted\", function () {\n  pm.expect(pm.response.json().booking.status).to.eql(\"accepted\");\n});\npm.test(\"Transport fee recorded\", function () {\n  pm.expect(pm.response.json().booking.transport_fee).to.eql(1500);\n});\npm.test(\"Client relation is attached\", function () {\n  pm.expect(pm.response.json().booking.client.name).to.eql(\"Awa Diallo\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"accepted\",\n  \"transport_fee\": 1500\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Payment & Completion",
+      "item": [
+        {
+          "id": "req-21",
+          "name": "Create Transport Payment",
+          "description": "Awa pays the 1,500 FCFA transport fee via MTN MoMo (simulated in local dev).",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 201\", function () { pm.response.to.have.status(201); });\npm.test(\"Payment is pending\", function () { pm.expect(pm.response.json().payment.status).to.eql(\"pending\"); });\npm.test(\"Amount matches the transport fee\", function () {\n  pm.expect(pm.response.json().payment.amount).to.eql(1500);\n  pm.expect(pm.response.json().payment.currency).to.eql(\"XAF\");\n});\npm.test(\"Reference is issued\", function () {\n  pm.expect(pm.response.json().payment.reference).to.match(/^WM-/);\n});\npm.collectionVariables.set(\"paymentId\", pm.response.json().payment.id);\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking_id\": \"{{bookingId}}\",\n  \"provider\": \"mtn_momo\",\n  \"phone\": \"+237 655 12 34 56\",\n  \"purpose\": \"transport_fee\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-22",
+          "name": "Confirm Transport Payment",
+          "description": "Mobile-money confirmation (simulated) — the fee is now held in escrow.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Payment is held in escrow\", function () {\n  pm.expect(pm.response.json().payment.status).to.eql(\"held\");\n});\npm.test(\"Provider transaction recorded\", function () {\n  pm.expect(pm.response.json().payment.provider_transaction_id).to.match(/^SIM-/);\n  pm.expect(pm.response.json().payment.paid_at).to.be.a(\"string\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{paymentId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{paymentId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-23",
+          "name": "Release Transport Fee",
+          "description": "Awa releases the escrowed transport fee so Michael can start the job.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Transport payment released\", function () {\n  pm.expect(pm.response.json().booking.transport_payment_status).to.eql(\"released\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/release-transport",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}",
+                "release-transport"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-24",
+          "name": "Start Work",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Booking is in progress\", function () {\n  pm.expect(pm.response.json().booking.status).to.eql(\"in_progress\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-25",
+          "name": "Share Live Location",
+          "description": "Michael shares his live GPS position from Akwa so the client can track him.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Location stored\", function () {\n  pm.expect(pm.response.json().location.latitude).to.eql(4.0544);\n  pm.expect(pm.response.json().location.longitude).to.eql(9.6961);\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 4.0544,\n  \"longitude\": 9.6961\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/location",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}",
+                "location"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-26",
+          "name": "Finish Work",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Booking is done and awaits client confirmation\", function () {\n  pm.expect(pm.response.json().booking.status).to.eql(\"done\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-27",
+          "name": "Confirm Completion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Booking is completed\", function () {\n  pm.expect(pm.response.json().booking.status).to.eql(\"completed\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "{{bookingId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-28",
+          "name": "Leave a Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 201\", function () { pm.response.to.have.status(201); });\npm.test(\"Review stored with 5 stars\", function () {\n  pm.expect(pm.response.json().review.rating).to.eql(5);\n});\npm.test(\"Review author is the client\", function () {\n  pm.expect(pm.response.json().review.client.name).to.eql(\"Awa Diallo\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking_id\": \"{{bookingId}}\",\n  \"rating\": 5,\n  \"body\": \"Fast, professional and on time — verified via the Postman test run.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reviews"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 — Admin",
+      "item": [
+        {
+          "id": "req-29",
+          "name": "Platform Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Counts reflect the seeded platform\", function () {\n  const s = pm.response.json();\n  pm.expect(s.users).to.be.at.least(7);\n  pm.expect(s.clients).to.be.at.least(2);\n  pm.expect(s.technicians).to.be.at.least(4);\n  pm.expect(s.bookings).to.be.at.least(9);\n  pm.expect(s.reviews).to.be.at.least(5);\n  pm.expect(s.pending_verification).to.be.at.least(1);\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-30",
+          "name": "Technician Verifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"All technician applications listed\", function () {\n  pm.expect(pm.response.json().technicians.data.length).to.be.at.least(4);\n});\npm.test(\"A pending verification exists\", function () {\n  const data = pm.response.json().technicians.data;\n  pm.expect(data.some(function (t) { return t.verification_status === \"pending\"; })).to.be.true;\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/technicians",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "technicians"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-31",
+          "name": "Approve Technician",
+          "description": "Admin verifies Eric Talla (gas delivery).",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Technician is now approved\", function () {\n  pm.expect(pm.response.json().technician.verification_status).to.eql(\"approved\");\n});\npm.test(\"Correct technician was approved\", function () {\n  pm.expect(pm.response.json().technician.user.email).to.eql(\"eric@workman.local\");\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verification_status\": \"approved\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/technicians/4/verification",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "technicians",
+                "4",
+                "verification"
+              ]
+            }
+          }
+        },
+        {
+          "id": "req-32",
+          "name": "Users by Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": "\npm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });\npm.test(\"Role filter works\", function () {\n  pm.response.json().users.data.forEach(function (u) { pm.expect(u.role).to.eql(\"client\"); });\n});\n"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?role=client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "client"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
