@@ -13,16 +13,27 @@ instance and passed.
 | 02 — Authentication | 7 | Login for client / technician / admin, `me`, profile, notifications, and a negative 401 case |
 | 03 — Client | 5 | Bookings list, create a booking, booking detail, favorite a technician, favorites list |
 | 04 — Technician | 3 | Provider services, working hours, accept a booking (sets transport fee) |
-| 05 — Payment & Completion | 9 | Create + confirm transport payment, release fee, start work, share live location, finish work, client confirmation, leave a review |
-| 06 — Admin | 5 | Platform summary, technician verifications, approve a technician, users by role |
+| 05 — Payment & Completion | 8 | Create + confirm transport payment, release fee, start work, share live location, finish work, client confirmation, leave a review |
+| 06 — Admin | 4 | Platform summary, technician verifications, approve a technician, users by role |
 
 **Total: 32 requests · 83 assertions · 0 failures.**
 Average response time 3 ms (min 1 ms, max 26 ms); total run duration ~735 ms.
 
 ## Screenshots
 
-- [`../docs/screenshots/postman-api-request.png`](../docs/screenshots/postman-api-request.png) — request view (tests + JSON response)
-- [`../docs/screenshots/postman-api-collection-runner.png`](../docs/screenshots/postman-api-collection-runner.png) — collection runner, all requests green
+| | |
+| --- | --- |
+| ![Accept Booking request](../docs/screenshots/postman-api-request.png) | ![Collection runner](../docs/screenshots/postman-api-collection-runner.png) |
+| **Request view** — `PATCH /bookings/{id}/status` with its test script and the real 200 response | **Collection runner** — all 32 requests green, 83 assertions, 0 failed |
+| ![Login](../docs/screenshots/postman-api-login.png) | ![401 negative test](../docs/screenshots/postman-api-unauthorized-401.png) |
+| **Auth** — `POST /auth/login` request body + real token response | **Negative test** — unauthenticated request correctly returns 401 |
+| ![Payment](../docs/screenshots/postman-api-payment.png) | ![Review](../docs/screenshots/postman-api-review.png) |
+| **Payment** — `POST /payments` with MTN MoMo transport fee, real 201 + reference | **Review** — `POST /reviews`, 5-star review stored against the completed booking |
+| ![Admin summary](../docs/screenshots/postman-api-admin-summary.png) | ![Newman terminal](../docs/screenshots/postman-newman-terminal.png) |
+| **Admin** — `GET /admin/summary` with seeded-count assertions | **Newman CLI** — headless run output with the real summary table |
+
+All values shown (status codes, timings, IDs, tokens, references, timestamps) are
+from the actual run that this collection was validated with.
 
 ## How to run
 

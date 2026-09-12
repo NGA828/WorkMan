@@ -74,6 +74,11 @@ npx newman run postman/workman-api.postman_collection.json
 ![Postman request view](docs/screenshots/postman-api-request.png)
 ![Postman collection runner](docs/screenshots/postman-api-collection-runner.png)
 
+Eight screenshots in [`docs/screenshots/`](docs/screenshots/) cover the full
+test session — request views for auth, payments, reviews and admin, a 401
+negative test, the collection runner, and the Newman terminal output. See
+[`postman/README.md`](postman/README.md#screenshots) for the annotated gallery.
+
 ## API surface
 
 All endpoints live under `/api`. See `backend/routes/api.php` for the complete, formatted route map:
