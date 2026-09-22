@@ -1,5 +1,90 @@
 /* Shared styles for dashboard pages (inside the dashboard shell). */
 
+.assistant-workspace {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.32fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  height: calc(100vh - 285px);
+  min-height: 390px;
+}
+
+.assistant-page {
+  min-height: 0;
+}
+
+.assistant-page .page-head {
+  margin-bottom: 18px;
+}
+
+.assistant-workspace > .assistant-chat-page {
+  height: 100%;
+  min-height: 0;
+}
+
+.assistant-info-card {
+  padding: 24px;
+  border-radius: 18px;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+.assistant-info-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 22px;
+  border-radius: 13px;
+  background: var(--lime);
+  color: var(--ink);
+  font-size: 23px;
+}
+
+.assistant-info-card h3 {
+  color: #fff;
+  font-size: 19px;
+  letter-spacing: -0.03em;
+}
+
+.assistant-info-card > p {
+  margin-top: 10px;
+  color: #aeb7c1;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.assistant-info-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+}
+
+.assistant-info-list span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #d8dde3;
+  font-size: 11px;
+}
+
+.assistant-info-list b {
+  color: var(--lime);
+  font-size: 10px;
+}
+
+@media (max-width: 850px) {
+  .assistant-workspace {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+  .assistant-info-card { display: none; }
+}
+
 /* ------------------------------------------------------------ welcome banner */
 .welcome-banner {
   display: flex;

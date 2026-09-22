@@ -12,6 +12,7 @@ const CLIENT_NAV = [
   { to: '/dashboard/bookings', icon: 'calendar', label: 'My bookings' },
   { to: '/dashboard/favorites', icon: 'heart', label: 'Favorites' },
   { to: '/dashboard/messages', icon: 'chat', label: 'Messages' },
+  { to: '/dashboard/assistant', icon: 'sparkle', label: 'Assistant' },
   { to: '/dashboard/settings', icon: 'settings', label: 'Settings' },
 ]
 
@@ -20,6 +21,7 @@ const PROVIDER_NAV = [
   { to: '/dashboard/jobs', icon: 'briefcase', label: 'Job requests' },
   { to: '/dashboard/history', icon: 'clock', label: 'Service history' },
   { to: '/dashboard/messages', icon: 'chat', label: 'Messages' },
+  { to: '/dashboard/assistant', icon: 'sparkle', label: 'Assistant' },
   { to: '/dashboard/profile-setup', icon: 'wrench', label: 'My profile' },
 ]
 
@@ -39,6 +41,7 @@ const TITLES = {
   '/dashboard/bookings': { title: 'My bookings', sub: 'Requests, appointments and history' },
   '/dashboard/favorites': { title: 'Favorites', sub: 'Technicians you saved' },
   '/dashboard/messages': { title: 'Messages', sub: 'Private conversations' },
+  '/dashboard/assistant': { title: 'Assistant', sub: 'Quick answers for your WorkMan tasks' },
   '/dashboard/settings': { title: 'Settings', sub: 'Your personal information' },
   '/dashboard/jobs': { title: 'Job requests', sub: 'Requests from clients' },
   '/dashboard/history': { title: 'Service history', sub: 'Your completed and past jobs' },

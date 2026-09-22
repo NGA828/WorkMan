@@ -9,6 +9,7 @@ import AdminReports from './pages/dashboard/AdminReports'
 import AdminReviews from './pages/dashboard/AdminReviews'
 import AdminUsers from './pages/dashboard/AdminUsers'
 import AdminVerification from './pages/dashboard/AdminVerification'
+import AssistantPage from './pages/dashboard/AssistantPage'
 import Bookings from './pages/dashboard/Bookings'
 import ClientHome from './pages/dashboard/ClientHome'
 import Discover from './pages/dashboard/Discover'
@@ -118,6 +119,14 @@ export default function App() {
           element={
             <RequireRole roles={['client']}>
               <SettingsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="assistant"
+          element={
+            <RequireRole roles={['client', 'provider']}>
+              <AssistantPage />
             </RequireRole>
           }
         />
