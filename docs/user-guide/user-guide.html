@@ -1,0 +1,987 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>WorkMan — User Guide</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+  @page cover { margin: 0; }
+  :root {
+    --ink: #17283d; --ink-soft: #22344d; --muted: #66747f; --cream: #fbf9f3; --panel: #fffdf8;
+    --lime: #d7ef74; --coral: #ef765e; --line: #e2ded5; --green: #4f8f2a; --green-soft: #eaf4df;
+    --red: #b64c3c; --red-soft: #fdeeea; --gold: #a8741f; --gold-soft: #faf1df; --blue: #3d6db5; --blue-soft: #e8f0fb;
+    --sidebar: #152136;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; color: var(--ink); font-size: 10.4pt; line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h1, h2, h3, h4 { line-height: 1.2; letter-spacing: -0.02em; margin: 0; }
+  em.serif, .serif { font-family: 'DM Serif Display', Georgia, serif; font-weight: 400; font-style: italic; color: var(--coral); letter-spacing: 0; }
+  p { margin: 0 0 8px; }
+  a { color: var(--blue); text-decoration: none; }
+  code, pre, kbd { font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace; }
+  code { font-size: 8.8pt; background: #f1eee6; padding: 1px 5px; border-radius: 4px; color: #2b3a50; }
+  pre { background: var(--sidebar); color: #e6ecf5; font-size: 8.6pt; line-height: 1.55; padding: 11px 14px; border-radius: 10px; margin: 6px 0 12px; white-space: pre-wrap; word-break: break-word; break-inside: avoid; }
+  pre .c { color: #8fa0b8; }
+  pre .p { color: var(--lime); user-select: none; }
+  kbd { font-size: 8.4pt; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: #fff; }
+
+  /* ------------ cover */
+  .cover { page: cover; height: 297mm; width: 210mm; background: var(--sidebar); color: #fff; position: relative; overflow: hidden; padding: 30mm 22mm; break-after: page; }
+  .cover .mark { display: flex; align-items: center; gap: 12px; font-size: 22pt; font-weight: 800; letter-spacing: -0.03em; }
+  .cover .mark span.w { width: 46px; height: 46px; border-radius: 13px; background: var(--lime); color: var(--ink); display: grid; place-items: center; font-size: 19pt; }
+  .cover .mark .dot { color: var(--coral); }
+  .cover .eyebrow { margin-top: 62mm; }
+  .cover h1 { font-size: 50pt; font-weight: 800; letter-spacing: -0.045em; line-height: 1.02; margin-top: 14px; }
+  .cover h1 .serif { font-size: 54pt; }
+  .cover .lead { margin-top: 18px; max-width: 128mm; font-size: 13pt; color: #b8c4d6; line-height: 1.5; }
+  .cover .chips { margin-top: 26px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .cover .chips span { border: 1px solid rgba(255,255,255,.22); border-radius: 999px; padding: 5px 13px; font-size: 9.5pt; color: #dfe6f0; }
+  .cover .meta { position: absolute; left: 22mm; right: 22mm; bottom: 24mm; display: flex; justify-content: space-between; font-size: 9.5pt; color: #8fa0b8; border-top: 1px solid rgba(255,255,255,.14); padding-top: 12px; }
+  .cover .blob { position: absolute; right: -40mm; top: 30mm; width: 150mm; height: 150mm; border-radius: 50%; background: radial-gradient(circle at 35% 35%, rgba(239,118,94,.55), rgba(239,118,94,0) 62%); }
+  .cover .blob2 { position: absolute; right: 18mm; top: 58mm; width: 60mm; height: 60mm; border-radius: 50%; background: radial-gradient(circle, rgba(215,239,116,.35), rgba(215,239,116,0) 65%); }
+
+  .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: 8pt; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--coral); }
+  .eyebrow::before { content: ''; width: 26px; height: 2px; background: currentColor; display: inline-block; }
+  .cover .eyebrow { color: var(--lime); display: flex; }
+
+  /* ------------ structure */
+  .part { break-before: page; background: var(--cream); border-radius: 18px; padding: 26mm 14mm; margin-top: 30mm; }
+  .part .num { font-size: 70pt; font-weight: 800; color: var(--lime); -webkit-text-stroke: 1.5px var(--ink); line-height: 1; letter-spacing: -0.05em; }
+  .part h1 { font-size: 32pt; font-weight: 800; letter-spacing: -0.04em; margin-top: 10px; }
+  .part p { margin-top: 12px; font-size: 12pt; color: var(--muted); max-width: 140mm; }
+  .part ol { margin-top: 18px; padding-left: 20px; font-size: 11pt; columns: 2; column-gap: 12mm; }
+  .part ol li { margin-bottom: 4px; }
+
+  section.chapter { break-before: page; }
+  section.chapter.flow { break-before: auto; margin-top: 12mm; }
+  .chapter-head { break-after: avoid; break-inside: avoid; border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 14px; }
+  .chapter-head h2 { font-size: 21pt; font-weight: 800; letter-spacing: -0.035em; margin-top: 6px; }
+  .chapter-head .intro { color: var(--muted); margin-top: 6px; font-size: 10.8pt; }
+  h3 { font-size: 13pt; font-weight: 700; margin: 16px 0 6px; break-after: avoid; }
+  h3 .step { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: var(--ink); color: var(--lime); font-size: 9.5pt; margin-right: 8px; vertical-align: 1px; }
+  h4 { font-size: 10.8pt; font-weight: 700; margin: 12px 0 4px; break-after: avoid; }
+  ul, ol { margin: 4px 0 10px; padding-left: 20px; }
+  li { margin-bottom: 3px; }
+  li::marker { color: var(--coral); font-weight: 700; }
+
+  table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 6px 0 12px; font-size: 9.2pt; break-inside: avoid; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th { background: var(--ink); color: #fff; text-align: left; font-weight: 600; padding: 7px 10px; font-size: 8.8pt; }
+  td { padding: 6px 10px; border-top: 1px solid var(--line); vertical-align: top; background: #fff; }
+  tr:nth-child(even) td { background: #fcfbf7; }
+
+  .callout { border-radius: 12px; padding: 10px 14px 10px 14px; margin: 10px 0 12px; font-size: 9.6pt; break-inside: avoid; border: 1px solid transparent; }
+  .callout b.t { display: block; font-size: 8pt; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 3px; }
+  .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+  .tip { background: var(--green-soft); border-color: #d4e8c1; } .tip b.t { color: var(--green); }
+  .warn { background: var(--gold-soft); border-color: #f0dfb9; } .warn b.t { color: var(--gold); }
+  .note { background: var(--blue-soft); border-color: #cfdcf1; } .note b.t { color: var(--blue); }
+  .danger { background: var(--red-soft); border-color: #f5d3cb; } .danger b.t { color: var(--red); }
+
+  figure { margin: 10px 0 14px; break-inside: avoid; }
+  figure img { width: 90%; margin: 0 auto; display: block; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(23,40,61,.08); }
+  figure.half img { width: 100%; }
+  figcaption { font-size: 8.6pt; color: var(--muted); margin-top: 6px; }
+  figcaption b { color: var(--ink); }
+  .fig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fig-row figure img { width: 100%; }
+  figcaption { text-align: center; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; break-inside: avoid; }
+  .card h4 { margin-top: 0; }
+  .terminal-label { display: inline-block; font-size: 7.8pt; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; background: var(--lime); color: var(--ink); padding: 2px 8px; border-radius: 6px; margin-top: 6px; }
+  .os { font-size: 8pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 8px 0 2px; }
+
+  .badge { display: inline-block; font-size: 7.6pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .b-gold { background: var(--gold-soft); color: var(--gold); } .b-blue { background: var(--blue-soft); color: var(--blue); }
+  .b-green { background: var(--green-soft); color: var(--green); } .b-red { background: var(--red-soft); color: var(--red); }
+  .b-grey { background: #eeece6; color: #5d6770; } .b-ink { background: var(--ink); color: var(--lime); }
+  .ui { font-weight: 700; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; font-size: 9pt; white-space: nowrap; }
+
+  .toc { columns: 2; column-gap: 12mm; margin-top: 10px; }
+  .toc .grp { break-inside: avoid; margin-bottom: 12px; }
+  .toc .grp b { display: block; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: var(--coral); margin-bottom: 4px; }
+  .toc a { display: flex; justify-content: space-between; color: var(--ink); padding: 3px 0; border-bottom: 1px dotted var(--line); font-size: 10pt; }
+  .toc a span.n { color: var(--muted); font-weight: 700; width: 28px; flex: none; }
+  .toc a span.t { flex: 1; }
+
+  .flow-diagram { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 12px; font-size: 9pt; }
+  .flow-diagram .s { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; font-weight: 600; }
+  .flow-diagram .a { color: var(--coral); font-weight: 800; }
+
+  .keep { break-inside: avoid; }
+  .small { font-size: 9pt; color: var(--muted); }
+  .spacer { height: 6px; }
+</style>
+</head>
+<body>
+
+<!-- =============================================================== COVER -->
+<div class="cover">
+  <div class="blob"></div><div class="blob2"></div>
+  <div class="mark"><span class="w">W</span><span>workman<span class="dot">.</span></span></div>
+  <div class="eyebrow">Official user guide</div>
+  <h1>Getting started<br />with <span class="serif">WorkMan.</span></h1>
+  <p class="lead">How to install and start the database, the Laravel backend and the React frontend — then a complete, screen-by-screen tour of the platform for clients, technicians and administrators.</p>
+  <div class="chips"><span>Laravel 13 · PHP 8.3</span><span>React 19 · Vite</span><span>MySQL / SQLite</span><span>3 roles</span></div>
+  <div class="meta"><span>WorkMan — local services platform</span><span>Version 1.0 · September 2026</span></div>
+</div>
+
+<!-- =============================================================== TOC -->
+<section>
+  <div class="eyebrow">Contents</div>
+  <h2 style="font-size:24pt;font-weight:800;letter-spacing:-.04em;margin:6px 0 4px">What's in this <span class="serif">guide</span></h2>
+  <p class="small">Part 1 gets the application running on your computer. Part 2 explains how to use it. Every entry is a clickable link.</p>
+  <div class="toc">
+    <div class="grp"><b>Part 1 — Setup &amp; start-up</b>
+      <a href="#about"><span class="n">1</span><span class="t">About WorkMan</span></a>
+      <a href="#prereq"><span class="n">2</span><span class="t">What you need to install</span></a>
+      <a href="#code"><span class="n">3</span><span class="t">Getting the project</span></a>
+      <a href="#database"><span class="n">4</span><span class="t">Step 1 — Start the database</span></a>
+      <a href="#backend"><span class="n">5</span><span class="t">Step 2 — Start the backend</span></a>
+      <a href="#frontend"><span class="n">6</span><span class="t">Step 3 — Start the frontend</span></a>
+      <a href="#daily"><span class="n">7</span><span class="t">Everyday start-up checklist</span></a>
+      <a href="#accounts"><span class="n">8</span><span class="t">Demo accounts</span></a>
+      <a href="#ai"><span class="n">9</span><span class="t">Optional: AI photo diagnosis</span></a>
+      <a href="#trouble"><span class="n">10</span><span class="t">Troubleshooting</span></a>
+    </div>
+    <div class="grp"><b>Part 2 — Using the application</b>
+      <a href="#public"><span class="n">11</span><span class="t">Public pages, sign-up &amp; login</span></a>
+      <a href="#layout"><span class="n">12</span><span class="t">The dashboard layout</span></a>
+      <a href="#client"><span class="n">13</span><span class="t">Client guide</span></a>
+      <a href="#tech"><span class="n">14</span><span class="t">Technician guide</span></a>
+      <a href="#admin"><span class="n">15</span><span class="t">Administrator guide</span></a>
+      <a href="#lifecycle"><span class="n">16</span><span class="t">A booking from start to finish</span></a>
+    </div>
+    <div class="grp"><b>Appendices</b>
+      <a href="#routes"><span class="n">A</span><span class="t">Page &amp; route map</span></a>
+      <a href="#api"><span class="n">B</span><span class="t">Testing the API with Postman</span></a>
+    </div>
+  </div>
+
+  <div class="callout note" style="margin-top:14px">
+    <b class="t">Conventions used</b>
+    <p>Buttons and menu items look like <span class="ui">Find a technician</span>. Commands you type in a terminal are shown in dark boxes; the <code>$</code> prompt is not typed. Lines starting with <code>#</code> are comments. Booking statuses look like <span class="badge b-gold">Pending</span>.</p>
+  </div>
+</section>
+
+<!-- =============================================================== PART 1 -->
+<div class="part">
+  <div class="num">01</div>
+  <h1>Setup &amp; <span class="serif">start-up</span></h1>
+  <p>WorkMan is made of three pieces that run side by side. You start them in this order: the database, then the backend API, then the frontend website.</p>
+  <ol>
+    <li>About WorkMan</li><li>What you need to install</li><li>Getting the project</li><li>Start the database</li><li>Start the backend</li>
+    <li>Start the frontend</li><li>Everyday checklist</li><li>Demo accounts</li><li>AI photo diagnosis</li><li>Troubleshooting</li>
+  </ol>
+</div>
+
+<section class="chapter" id="about">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 1</div>
+    <h2>About WorkMan</h2>
+    <p class="intro">WorkMan connects clients with verified local technicians and covers the whole service journey — not just a directory.</p>
+  </div>
+
+  <div class="flow-diagram">
+    <span class="s">Discovery</span><span class="a">→</span><span class="s">Verification</span><span class="a">→</span><span class="s">Chat</span><span class="a">→</span><span class="s">Booking</span><span class="a">→</span><span class="s">Transport payment</span><span class="a">→</span><span class="s">Live tracking</span><span class="a">→</span><span class="s">Service</span><span class="a">→</span><span class="s">Confirmation</span><span class="a">→</span><span class="s">Rating</span><span class="a">→</span><span class="s">History</span>
+  </div>
+
+  <h3>The three roles</h3>
+  <table>
+    <tr><th style="width:22%">Role</th><th>What they can do</th></tr>
+    <tr><td><b>Client</b></td><td>Search and filter technicians, view profiles, chat, book (manually or with the AI booking assistant), pay the transport fee, track the technician live, confirm completion, rate and review, save favourites, report issues.</td></tr>
+    <tr><td><b>Technician</b><br /><span class="small">(called “provider” in the code)</span></td><td>Build a professional profile (services, prices, service areas, working hours), upload an ID for verification, switch availability on/off, accept or reject bookings, set transport fees, share live GPS location, mark jobs done, view service history.</td></tr>
+    <tr><td><b>Administrator</b></td><td>Approve or reject technicians, manage users (deactivate / reactivate), manage service categories, monitor bookings, moderate reviews and resolve reported issues.</td></tr>
+  </table>
+
+  <h3>How the pieces fit together</h3>
+  <table>
+    <tr><th style="width:20%">Piece</th><th style="width:28%">Technology</th><th style="width:16%">Address</th><th>Folder / role</th></tr>
+    <tr><td><b>Database</b></td><td>MySQL 8 / MariaDB (recommended) or SQLite</td><td><code>localhost:3306</code></td><td>Stores users, bookings, messages, payments, reviews…</td></tr>
+    <tr><td><b>Backend</b></td><td>Laravel 13 REST API (PHP 8.3+)</td><td><code>localhost:8000</code></td><td><code>backend/</code> — all endpoints live under <code>/api</code></td></tr>
+    <tr><td><b>Frontend</b></td><td>React 19 + Vite single-page app</td><td><code>localhost:5173</code></td><td><code>frontend/</code> — the website you open in the browser</td></tr>
+  </table>
+  <p>The browser only talks to the frontend at <code>localhost:5173</code>. Vite forwards (proxies) every request that starts with <code>/api</code> or <code>/storage</code> to the backend on port 8000, so no CORS setup is needed during development.</p>
+
+<pre style="text-align:center">Browser  ──►  Frontend :5173  ──/api──►  Backend :8000  ──►  MySQL :3306</pre>
+</section>
+
+<section class="chapter flow" id="prereq">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 2</div>
+    <h2>What you need to install</h2>
+    <p class="intro">Install these once. Check each one with the command in the last column.</p>
+  </div>
+  <table>
+    <tr><th style="width:22%">Software</th><th style="width:16%">Version</th><th>Why</th><th style="width:24%">Check with</th></tr>
+    <tr><td><b>PHP</b></td><td>8.3 or newer</td><td>Runs the Laravel backend. Needs the extensions <code>pdo_mysql</code> (or <code>pdo_sqlite</code>), <code>mbstring</code>, <code>openssl</code>, <code>fileinfo</code>, <code>curl</code>.</td><td><code>php -v</code><br /><code>php -m</code></td></tr>
+    <tr><td><b>Composer</b></td><td>2.x</td><td>Installs the PHP libraries (Laravel).</td><td><code>composer -V</code></td></tr>
+    <tr><td><b>Node.js + npm</b></td><td>Node 20.19+ or 22.12+</td><td>Runs the React/Vite frontend (Vite 8 requires these versions).</td><td><code>node -v</code><br /><code>npm -v</code></td></tr>
+    <tr><td><b>MySQL / MariaDB</b></td><td>MySQL 8 or MariaDB 10.6+</td><td>The database server. The easiest way on Windows is <b>XAMPP</b> (includes MySQL/MariaDB and phpMyAdmin).</td><td><code>mysql --version</code></td></tr>
+    <tr><td><b>Git</b></td><td>any recent</td><td>Download the project.</td><td><code>git --version</code></td></tr>
+  </table>
+  <div class="callout tip">
+    <b class="t">Tip for Windows users</b>
+    <p>Installing <b>XAMPP</b> (with PHP 8.3+) gives you both PHP and MySQL in one step. Add <code>C:\xampp\php</code> to your <code>PATH</code> so the <code>php</code> command works in any terminal, then install Composer from getcomposer.org and Node.js (LTS) from nodejs.org.</p>
+  </div>
+</section>
+
+<section class="chapter flow" id="code">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 3</div>
+    <h2>Getting the project</h2>
+  </div>
+<pre><span class="p">$ </span>git clone https://github.com/NGA828/WorkMan.git
+<span class="p">$ </span>cd WorkMan</pre>
+  <p>The repository contains:</p>
+<pre>WorkMan/
+├── backend/    <span class="c">Laravel 13 API (PHP 8.3+)</span>
+├── frontend/   <span class="c">React 19 + Vite website</span>
+├── postman/    <span class="c">Postman collection to test the API</span>
+└── docs/       <span class="c">Screenshots and this user guide</span></pre>
+</section>
+
+<!-- ------------------------------------------------------------- DATABASE -->
+<section class="chapter" id="database">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 4 · Step 1 of 3</div>
+    <h2>Start the <span class="serif">database</span></h2>
+    <p class="intro">The backend needs a running database before it can create its tables. MySQL (or MariaDB) is the recommended option.</p>
+  </div>
+
+  <div class="callout warn">
+    <b class="t">Why MySQL is recommended</b>
+    <p>The backend <code>.env.example</code> defaults to SQLite, but one migration (<code>2026_09_12_151000_expand_payment_statuses_for_escrow.php</code>) runs a MySQL-only <code>ALTER TABLE … MODIFY … ENUM</code> statement. On SQLite, <code>php artisan migrate</code> stops with an error at that file. Use MySQL/MariaDB to avoid this, or see “Option B” below.</p>
+  </div>
+
+  <h3>Option A — MySQL / MariaDB (recommended)</h3>
+
+  <h4><span class="step" style="display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--ink);color:var(--lime);font-size:9pt;margin-right:6px">1</span>Start the MySQL server</h4>
+  <div class="grid2">
+    <div class="card">
+      <div class="os">Windows — XAMPP</div>
+      <ol style="margin:0">
+        <li>Open the <b>XAMPP Control Panel</b>.</li>
+        <li>Click <span class="ui">Start</span> next to <b>MySQL</b>. It turns green and shows port <code>3306</code>.</li>
+        <li>(Optional) Click <span class="ui">Start</span> next to Apache too if you want to use phpMyAdmin.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <div class="os">macOS / Linux</div>
+<pre style="margin:4px 0 0"><span class="c"># macOS (Homebrew)</span>
+<span class="p">$ </span>brew services start mysql
+<span class="c"># Ubuntu / Debian</span>
+<span class="p">$ </span>sudo systemctl start mysql</pre>
+    </div>
+  </div>
+
+  <h4><span class="step" style="display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--ink);color:var(--lime);font-size:9pt;margin-right:6px">2</span>Create an empty database called <code>workman</code></h4>
+  <p>Either open <b>phpMyAdmin</b> (<code>http://localhost/phpmyadmin</code>) → <span class="ui">New</span> → type <code>workman</code> → collation <code>utf8mb4_unicode_ci</code> → <span class="ui">Create</span>, or use the terminal:</p>
+<pre><span class="p">$ </span>mysql -u root -p
+<span class="c">-- (XAMPP: the root password is empty, just press Enter)</span>
+mysql&gt; CREATE DATABASE workman CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+mysql&gt; EXIT;</pre>
+
+  <h4><span class="step" style="display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--ink);color:var(--lime);font-size:9pt;margin-right:6px">3</span>Point the backend at MySQL</h4>
+  <p>After you create <code>backend/.env</code> (Chapter 5, step 2), replace the two SQLite lines with:</p>
+<pre>DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=workman
+DB_USERNAME=root
+DB_PASSWORD=          <span class="c"># empty on XAMPP; otherwise your MySQL password</span></pre>
+  <div class="callout note">
+    <b class="t">Good to know</b>
+    <p>You do not create any tables by hand. Laravel creates all of them (users, bookings, payments, messages, reviews, sessions, cache, jobs…) when you run <code>php artisan migrate --seed</code> in the next chapter.</p>
+  </div>
+
+  <h3>Option B — SQLite (file-based, no server)</h3>
+  <p>SQLite stores the whole database in a single file, <code>backend/database/database.sqlite</code>, so there is no server to start. This is the default in <code>.env.example</code>:</p>
+<pre>DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite</pre>
+<pre><span class="c"># create the empty database file (from the backend/ folder)</span>
+<span class="p">$ </span>touch database/database.sqlite                 <span class="c"># macOS / Linux</span>
+<span class="p">&gt; </span>type nul &gt; database\database.sqlite            <span class="c"># Windows (cmd)</span></pre>
+  <div class="callout danger">
+    <b class="t">Known limitation</b>
+    <p>Because of the MySQL-only migration mentioned above, <code>php artisan migrate</code> will fail on SQLite until that migration is made database-aware (for example, skipping the <code>ALTER TABLE</code> when <code>DB::getDriverName() === 'sqlite'</code>). Use Option A unless that has been fixed.</p>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- BACKEND -->
+<section class="chapter" id="backend">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 5 · Step 2 of 3</div>
+    <h2>Start the <span class="serif">backend</span></h2>
+    <p class="intro">The Laravel API runs on <code>http://127.0.0.1:8000</code>. Open a terminal in the project folder — this is <b>Terminal 1</b>.</p>
+  </div>
+
+  <h3><span class="step">1</span>Install the PHP dependencies</h3>
+<pre><span class="p">$ </span>cd backend
+<span class="p">$ </span>composer install</pre>
+
+  <h3><span class="step">2</span>Create the environment file</h3>
+<pre><span class="p">$ </span>cp .env.example .env             <span class="c"># macOS / Linux / Git Bash</span>
+<span class="p">&gt; </span>copy .env.example .env           <span class="c"># Windows (cmd / PowerShell)</span></pre>
+  <p>Now open <code>backend/.env</code> in a text editor and set the database lines as described in Chapter 4 (MySQL recommended). The other important values are already filled in:</p>
+  <table>
+    <tr><th style="width:30%">Variable</th><th style="width:30%">Default</th><th>Meaning</th></tr>
+    <tr><td><code>APP_URL</code></td><td><code>http://localhost:8000</code></td><td>Where the API runs.</td></tr>
+    <tr><td><code>FRONTEND_URL</code></td><td><code>http://localhost:5173</code></td><td>Where the website runs (used for CORS).</td></tr>
+    <tr><td><code>DB_*</code></td><td>SQLite</td><td>Database connection — change to MySQL.</td></tr>
+    <tr><td><code>AI_API_KEY</code></td><td><i>empty</i></td><td>Optional — enables AI photo diagnosis (Chapter 9).</td></tr>
+  </table>
+
+  <h3><span class="step">3</span>Generate the application key</h3>
+<pre><span class="p">$ </span>php artisan key:generate</pre>
+
+  <h3><span class="step">4</span>Create the tables and load the demo data</h3>
+<pre><span class="p">$ </span>php artisan migrate --seed</pre>
+  <p>This runs every migration in <code>database/migrations/</code> and then <code>DatabaseSeeder</code>, which creates the demo accounts (Chapter 8), service categories, technician profiles and sample bookings at every stage of the lifecycle.</p>
+
+  <h3><span class="step">5</span>Link the storage folder (for uploads)</h3>
+<pre><span class="p">$ </span>php artisan storage:link</pre>
+  <p>ID documents and booking photos are saved to <code>storage/app/public</code>. This command makes them reachable at <code>/storage/…</code> so administrators can open uploaded ID documents.</p>
+
+  <h3><span class="step">6</span>Start the API server</h3>
+<pre><span class="p">$ </span>php artisan serve
+   INFO  Server running on [http://127.0.0.1:8000].</pre>
+  <p>Leave this terminal open — closing it stops the backend.</p>
+
+  <div class="callout tip">
+    <b class="t">Check that it works</b>
+    <p>Open <code>http://127.0.0.1:8000/api/health</code> in your browser. You should see a small JSON response with <code>"status": "ok"</code>. <code>http://127.0.0.1:8000/api/categories</code> should list the service categories (Plumbing, Electrical work, Carpentry, Gas delivery, Laundry).</p>
+  </div>
+
+  <h4>Useful backend commands</h4>
+  <table>
+    <tr><th style="width:42%">Command</th><th>What it does</th></tr>
+    <tr><td><code>php artisan migrate:fresh --seed</code></td><td>Deletes every table, recreates them and reloads the demo data — a full reset.</td></tr>
+    <tr><td><code>php artisan serve --port=8080</code></td><td>Run on another port (then update the proxy in <code>frontend/vite.config.js</code>).</td></tr>
+    <tr><td><code>php artisan route:list --path=api</code></td><td>Lists every API endpoint.</td></tr>
+    <tr><td><code>php artisan config:clear</code></td><td>Reloads <code>.env</code> after you change it.</td></tr>
+    <tr><td><code>php artisan test</code></td><td>Runs the PHPUnit test suite.</td></tr>
+  </table>
+</section>
+
+<!-- ------------------------------------------------------------- FRONTEND -->
+<section class="chapter" id="frontend">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 6 · Step 3 of 3</div>
+    <h2>Start the <span class="serif">frontend</span></h2>
+    <p class="intro">The React website runs on <code>http://localhost:5173</code>. Open a <b>second terminal</b> (Terminal 2) in the project folder; keep the backend terminal running.</p>
+  </div>
+
+  <h3><span class="step">1</span>Install the JavaScript dependencies</h3>
+<pre><span class="p">$ </span>cd frontend
+<span class="p">$ </span>npm install</pre>
+
+  <h3><span class="step">2</span>Check the environment file</h3>
+  <p><code>frontend/.env</code> already exists and contains a single line — you normally do not need to change it:</p>
+<pre>VITE_API_BASE_URL=/api</pre>
+  <p>If the file is missing, copy it from <code>.env.example</code> (<code>cp .env.example .env</code>).</p>
+
+  <h3><span class="step">3</span>Start the development server</h3>
+<pre><span class="p">$ </span>npm run dev
+
+  VITE v8.x  ready in 250 ms
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.x.x:5173/</pre>
+
+  <h3><span class="step">4</span>Open the application</h3>
+  <p>Go to <b><code>http://localhost:5173</code></b> in Chrome, Edge or Firefox and log in with one of the demo accounts from Chapter 8 (for example <code>client@workman.local</code> / <code>password</code>).</p>
+
+  <div class="callout note">
+    <b class="t">How the frontend reaches the backend</b>
+    <p><code>frontend/vite.config.js</code> proxies <code>/api</code> and <code>/storage</code> to <code>http://127.0.0.1:8000</code>. The server also listens on all network interfaces (<code>host: '0.0.0.0'</code>), so you can open the Network address on a phone connected to the same Wi-Fi — handy for testing live GPS tracking.</p>
+  </div>
+
+  <h4>Other frontend commands</h4>
+  <table>
+    <tr><th style="width:36%">Command</th><th>What it does</th></tr>
+    <tr><td><code>npm run build</code></td><td>Builds an optimised production version into <code>frontend/dist/</code>.</td></tr>
+    <tr><td><code>npm run preview</code></td><td>Serves the production build locally for a final check.</td></tr>
+    <tr><td><code>npm run lint</code></td><td>Checks the code with ESLint.</td></tr>
+  </table>
+
+  <h3>Alternative: preview without PHP or a database (mock API)</h3>
+  <p>If you only want to look at the interface, the frontend ships with a zero-dependency Node.js server that imitates the real API with the same demo data. Use it <b>instead of</b> the backend and database:</p>
+<pre><span class="p">$ </span>cd frontend
+<span class="p">$ </span>node dev/mock-api.mjs            <span class="c"># fake API on http://127.0.0.1:8000/api</span>
+<span class="p">$ </span>node dev/mock-api.mjs --fresh    <span class="c"># same, but reset to the original demo data</span>
+<span class="c"># then, in another terminal:</span>
+<span class="p">$ </span>npm run dev</pre>
+  <p class="small">The mock saves its state in <code>frontend/dev/.mock-state.json</code>. The screenshots in Part 2 of this guide were captured this way. Do not run the mock API and <code>php artisan serve</code> at the same time — both use port 8000.</p>
+</section>
+
+<!-- ------------------------------------------------------------- DAILY -->
+<section class="chapter" id="daily">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 7</div>
+    <h2>Everyday start-up checklist</h2>
+    <p class="intro">Installation is done once. After that, starting WorkMan each day takes three steps.</p>
+  </div>
+  <div class="grid2" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="card">
+      <span class="terminal-label">1 · Database</span>
+      <p style="margin-top:8px">Start <b>MySQL</b> in the XAMPP Control Panel (or <code>brew services start mysql</code> / <code>sudo systemctl start mysql</code>).</p>
+      <p class="small">Skip if using SQLite.</p>
+    </div>
+    <div class="card">
+      <span class="terminal-label">2 · Backend</span>
+<pre style="margin-top:8px"><span class="p">$ </span>cd backend
+<span class="p">$ </span>php artisan serve</pre>
+      <p class="small">Keep this terminal open.</p>
+    </div>
+    <div class="card">
+      <span class="terminal-label">3 · Frontend</span>
+<pre style="margin-top:8px"><span class="p">$ </span>cd frontend
+<span class="p">$ </span>npm run dev</pre>
+      <p class="small">Open <code>localhost:5173</code>.</p>
+    </div>
+  </div>
+  <p style="margin-top:10px">To stop everything, press <kbd>Ctrl</kbd> + <kbd>C</kbd> in each terminal and stop MySQL in XAMPP. After pulling new code, run <code>composer install</code> + <code>php artisan migrate</code> in <code>backend/</code> and <code>npm install</code> in <code>frontend/</code>.</p>
+
+  <h3>Ports at a glance</h3>
+  <table>
+    <tr><th>Service</th><th>URL</th><th>Started by</th></tr>
+    <tr><td>Website (frontend)</td><td><code>http://localhost:5173</code></td><td><code>npm run dev</code></td></tr>
+    <tr><td>API (backend)</td><td><code>http://127.0.0.1:8000/api</code></td><td><code>php artisan serve</code></td></tr>
+    <tr><td>MySQL</td><td><code>127.0.0.1:3306</code></td><td>XAMPP / system service</td></tr>
+    <tr><td>phpMyAdmin (optional)</td><td><code>http://localhost/phpmyadmin</code></td><td>XAMPP Apache</td></tr>
+  </table>
+</section>
+
+<!-- ------------------------------------------------------------- ACCOUNTS -->
+<section class="chapter flow" id="accounts">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 8</div>
+    <h2>Demo accounts</h2>
+    <p class="intro">Created by <code>php artisan migrate --seed</code> (and by the mock API). The password for every account is <code>password</code>.</p>
+  </div>
+  <table>
+    <tr><th>Name</th><th>Email</th><th>Role</th><th>Notes</th></tr>
+    <tr><td>Admin User</td><td><code>admin@workman.local</code></td><td><span class="badge b-ink">Administrator</span></td><td>Full platform management</td></tr>
+    <tr><td>Awa Diallo</td><td><code>client@workman.local</code></td><td><span class="badge b-blue">Client</span></td><td>Has bookings at every stage — best account to explore</td></tr>
+    <tr><td>Jean Mbarga</td><td><code>jean@workman.local</code></td><td><span class="badge b-blue">Client</span></td><td>Second client</td></tr>
+    <tr><td>Michael Kone</td><td><code>michael@workman.local</code></td><td><span class="badge b-green">Technician</span></td><td>Plumbing · verified</td></tr>
+    <tr><td>Fatou Ndiaye</td><td><code>fatou@workman.local</code></td><td><span class="badge b-green">Technician</span></td><td>Electrical · verified</td></tr>
+    <tr><td>Samuel Bate</td><td><code>samuel@workman.local</code></td><td><span class="badge b-green">Technician</span></td><td>Carpentry · verified</td></tr>
+    <tr><td>Eric Talla</td><td><code>eric@workman.local</code></td><td><span class="badge b-gold">Technician</span></td><td>Gas · <b>pending verification</b> (not visible to clients)</td></tr>
+  </table>
+  <div class="callout tip">
+    <b class="t">Testing several roles at once</b>
+    <p>The login is stored in the browser, so one browser window = one account. To watch a booking move between a client and a technician in real time, use a normal window for the client and a private/incognito window (or a second browser) for the technician. Logging in again with the same account signs out its previous session.</p>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- AI -->
+<section class="chapter" id="ai">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 9</div>
+    <h2>Optional: AI photo diagnosis</h2>
+    <p class="intro">In the <b>Book with AI</b> assistant, clients can attach a photo of the problem and ask for an AI analysis. This calls an external vision model from the backend.</p>
+  </div>
+  <p>Everything else works without it. To enable it, add a key to <code>backend/.env</code> and restart <code>php artisan serve</code>:</p>
+<pre>AI_PROVIDER=openrouter                     <span class="c"># or: groq</span>
+AI_API_KEY=your-provider-key-here
+AI_MODEL=google/gemini-2.0-flash-exp:free  <span class="c"># any vision model</span>
+AI_CA_BUNDLE=storage/app/cacert.pem        <span class="c"># optional</span></pre>
+  <div class="callout warn">
+    <b class="t">Keep the key secret</b>
+    <p>The key belongs only in <code>backend/.env</code> — never in <code>frontend/.env</code> (anything starting with <code>VITE_</code> is sent to the browser). Without a key, the assistant shows “AI diagnosis is not configured”.</p>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------------- TROUBLE -->
+<section class="chapter" id="trouble">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 10</div>
+    <h2>Troubleshooting</h2>
+  </div>
+  <table>
+    <tr><th style="width:34%">Problem</th><th>Solution</th></tr>
+    <tr><td><code>php</code> or <code>composer</code> is “not recognized”</td><td>Add PHP (e.g. <code>C:\xampp\php</code>) and Composer to your system <code>PATH</code>, then open a new terminal.</td></tr>
+    <tr><td><code>composer install</code> complains about the PHP version or a missing extension</td><td>Use PHP 8.3+. Enable the missing extension (e.g. <code>extension=fileinfo</code>, <code>extension=pdo_mysql</code>) in <code>php.ini</code>.</td></tr>
+    <tr><td><code>SQLSTATE[HY000] [2002] Connection refused</code></td><td>MySQL is not running — start it in XAMPP. Check <code>DB_HOST</code>/<code>DB_PORT</code> in <code>.env</code>.</td></tr>
+    <tr><td><code>Unknown database 'workman'</code></td><td>Create the database first (Chapter 4, step 2).</td></tr>
+    <tr><td><code>Access denied for user 'root'</code></td><td>Set the correct <code>DB_USERNAME</code> / <code>DB_PASSWORD</code>, then run <code>php artisan config:clear</code>.</td></tr>
+    <tr><td>Migration fails with <code>near "MODIFY": syntax error</code></td><td>You are on SQLite. Switch to MySQL (Chapter 4, Option A), then run <code>php artisan migrate:fresh --seed</code>.</td></tr>
+    <tr><td><code>No application encryption key has been specified</code></td><td>Run <code>php artisan key:generate</code>.</td></tr>
+    <tr><td>Login fails / the page shows network errors</td><td>The backend is not running on port 8000. Start <code>php artisan serve</code> and check <code>/api/health</code>.</td></tr>
+    <tr><td>“Your account has been deactivated”</td><td>An administrator deactivated this user. Reactivate it in <span class="ui">Users</span>, or reset the data with <code>migrate:fresh --seed</code>.</td></tr>
+    <tr><td>Port 5173 or 8000 already in use</td><td>Stop the other program (or an old terminal). Vite will offer the next free port automatically.</td></tr>
+    <tr><td><code>npm run dev</code> fails with a Node version error</td><td>Upgrade Node.js to 20.19+ or 22.12+.</td></tr>
+    <tr><td>Uploaded ID documents give 404</td><td>Run <code>php artisan storage:link</code>.</td></tr>
+    <tr><td>The tracking map is grey</td><td>Map tiles come from OpenStreetMap — an internet connection is required. Allow location access when the browser asks.</td></tr>
+    <tr><td>The browser does not ask for location / sharing fails</td><td>Browsers only allow GPS on <code>localhost</code> or HTTPS. When testing on a phone via the Network IP, use an HTTPS tunnel.</td></tr>
+  </table>
+</section>
+
+<!-- =============================================================== PART 2 -->
+<div class="part">
+  <div class="num">02</div>
+  <h1>Using the <span class="serif">application</span></h1>
+  <p>A screen-by-screen tour of WorkMan. Each role has its own dashboard and sidebar menu; start with the chapter for the role you are using.</p>
+  <ol start="11">
+    <li>Public pages, sign-up &amp; login</li><li>The dashboard layout</li><li>Client guide</li><li>Technician guide</li><li>Administrator guide</li><li>A booking from start to finish</li>
+  </ol>
+</div>
+
+<!-- ------------------------------------------------------------- PUBLIC -->
+<section class="chapter" id="public">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 11</div>
+    <h2>Public pages, sign-up &amp; login</h2>
+    <p class="intro">Anyone can see these pages without an account.</p>
+  </div>
+
+  <h3>The home page — <code>/</code></h3>
+  <figure>
+    <img src="screenshots/01-landing.jpg" alt="Landing page" />
+    <figcaption><b>Figure 1.</b> The WorkMan home page.</figcaption>
+  </figure>
+  <ul>
+    <li><b>Top menu</b> — <span class="ui">For clients</span>, <span class="ui">For technicians</span>, <span class="ui">Services</span> and <span class="ui">About us</span> scroll to the matching section of the page.</li>
+    <li><span class="ui">Log in</span> opens the login page; <span class="ui">Join WorkMan</span> opens the registration page. When you are already logged in, the button becomes a link to your dashboard.</li>
+    <li><span class="ui">Find a professional</span> and <span class="ui">Become a technician</span> start sign-up for the matching role. The city search box lets visitors start looking for help in their city.</li>
+    <li>Further down: the service categories, “How it works” and the trust &amp; safety section.</li>
+  </ul>
+
+  <h3>Creating an account — <code>/register</code></h3>
+  <div class="fig-row">
+    <figure><img src="screenshots/02-register.jpg" alt="Register" /><figcaption><b>Figure 2.</b> Registration with role choice.</figcaption></figure>
+    <figure><img src="screenshots/03-login.jpg" alt="Login" /><figcaption><b>Figure 3.</b> The login page.</figcaption></figure>
+  </div>
+  <ol>
+    <li>Enter your <b>Full name</b>.</li>
+    <li>Under <b>I'm joining as a</b>, pick <span class="ui">Client</span> (find trusted help) or <span class="ui">Technician</span> (offer your skills).</li>
+    <li>Fill in your <b>email</b>, <b>phone</b> (e.g. <code>+237 6XX XXX XXX</code>) and <b>city</b>.</li>
+    <li>Choose a <b>password</b> of at least 8 characters and repeat it.</li>
+    <li>Click <span class="ui">Create account ↗</span>. You are signed in and taken straight to your dashboard.</li>
+  </ol>
+  <div class="callout note"><b class="t">Administrator accounts</b><p>You cannot register as an administrator from the website. Use the seeded <code>admin@workman.local</code> account.</p></div>
+
+  <h3>Logging in — <code>/login</code></h3>
+  <p>Enter your email and password and click <span class="ui">Log in ↗</span>. If you tried to open a dashboard page while signed out, you are sent back to that page after logging in. Use <span class="ui">← Back to WorkMan</span> to return to the home page, or <span class="ui">Create an account</span> to switch to sign-up.</p>
+</section>
+
+<!-- ------------------------------------------------------------- LAYOUT -->
+<section class="chapter" id="layout">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 12</div>
+    <h2>The dashboard layout</h2>
+    <p class="intro">After login every role works inside the same shell. Only the sidebar menu changes.</p>
+  </div>
+  <figure>
+    <img src="screenshots/10-client-overview.jpg" alt="Dashboard shell" />
+    <figcaption><b>Figure 4.</b> The dashboard shell (client view): sidebar on the left, top bar with page title, notification bell and your name.</figcaption>
+  </figure>
+  <div class="grid2">
+    <div class="card">
+      <h4>① Sidebar (left)</h4>
+      <ul style="margin:0">
+        <li><b>Menu</b> — the pages available to your role. The current page is highlighted.</li>
+        <li><b>Your name and role</b> at the bottom.</li>
+        <li>The <b>sign-out</b> icon (arrow) next to your name logs you out and returns to the home page.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>② Top bar</h4>
+      <ul style="margin:0">
+        <li><b>Page title</b> and a short description.</li>
+        <li><b>Notification bell</b> — a red counter shows unread notifications.</li>
+        <li>Your avatar and first name.</li>
+        <li>On phones and small screens the sidebar is hidden: tap the <b>grid icon</b> at the top left to open it.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Notifications</h3>
+  <figure>
+    <img src="screenshots/11-notifications.jpg" alt="Notifications" style="max-height:95mm;object-fit:cover;object-position:top right" />
+    <figcaption><b>Figure 5.</b> The notification panel opens from the bell.</figcaption>
+  </figure>
+  <p>Click the bell to see recent events — a booking was accepted, a payment was received, a new message arrived, a job was marked done, and so on. Click a notification to jump to the related page, or <span class="ui">Mark all read</span> to clear the counter.</p>
+
+  <h3>Menus by role</h3>
+  <table>
+    <tr><th>Client</th><th>Technician</th><th>Administrator</th></tr>
+    <tr><td>Overview</td><td>Overview</td><td>Overview</td></tr>
+    <tr><td>Find a technician</td><td>Job requests</td><td>Verification</td></tr>
+    <tr><td>My bookings</td><td>Service history</td><td>Users</td></tr>
+    <tr><td>Favorites</td><td>Messages</td><td>Categories</td></tr>
+    <tr><td>Messages</td><td>Assistant</td><td>Bookings</td></tr>
+    <tr><td>Assistant</td><td>My profile</td><td>Reviews</td></tr>
+    <tr><td>Settings</td><td></td><td>Reports &amp; issues</td></tr>
+  </table>
+  <p class="small">If you type the address of a page that belongs to another role (e.g. a client opening <code>/dashboard/jobs</code>), WorkMan sends you back to your own Overview.</p>
+</section>
+
+<!-- ------------------------------------------------------------- CLIENT -->
+<section class="chapter" id="client">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 13 · Role guide</div>
+    <h2>Client <span class="serif">guide</span></h2>
+    <p class="intro">Find a verified technician, book, pay the transport fee, follow the technician and rate the job. Try it with <code>client@workman.local</code>.</p>
+  </div>
+
+  <h3>13.1 Overview</h3>
+  <p>The Overview (Figure 4) is your home page. It shows:</p>
+  <ul>
+    <li><b>Four counters</b> — total bookings, completed jobs, unread messages and favourite technicians. Click any of them to open the matching page.</li>
+    <li><b>Next booking</b> — your upcoming appointment with its status, date and transport fee, plus <span class="ui">Manage booking</span>.</li>
+    <li><b>Verified technicians near you</b> — quick links to top-rated professionals. <span class="ui">See all</span> opens the search.</li>
+    <li>The <span class="ui">Find a technician</span> shortcut in the welcome banner.</li>
+  </ul>
+
+  <h3>13.2 Find a technician</h3>
+  <figure>
+    <img src="screenshots/12-discover.jpg" alt="Discover" />
+    <figcaption><b>Figure 6.</b> Search and filter verified technicians.</figcaption>
+  </figure>
+  <p>Open <span class="ui">Find a technician</span> in the sidebar. Only technicians approved by an administrator appear here. Combine any of these filters — the results update as you type:</p>
+  <table>
+    <tr><th style="width:30%">Filter</th><th>Use it to…</th></tr>
+    <tr><td><b>What do you need?</b></td><td>Search by technician name or service (e.g. “leak”, “Fatou”).</td></tr>
+    <tr><td><b>City or neighborhood</b></td><td>Only show technicians who work in that area (e.g. Douala, Akwa).</td></tr>
+    <tr><td><b>All services</b></td><td>Limit to one category (Plumbing, Electrical work, Carpentry…).</td></tr>
+    <tr><td><b>Any rating</b></td><td>Show only technicians rated 3★, 4★ or 4.5★ and up.</td></tr>
+    <tr><td><b>Available now</b></td><td>Hide technicians who switched their availability off.</td></tr>
+  </table>
+  <p>On each card, click the <b>heart</b> to save the technician to your favourites, or <span class="ui">View profile</span> to open the full profile.</p>
+
+  <h3>13.3 Technician profile</h3>
+  <figure>
+    <img src="screenshots/13-technician-profile.jpg" alt="Technician profile" />
+    <figcaption><b>Figure 7.</b> A technician's profile: verification badge, rating, services and prices, working hours, service areas and reviews.</figcaption>
+  </figure>
+  <p>The profile shows everything you need to decide: the <b>Verified technician</b> badge, bio, rating, years of experience, cities, availability, <b>services with starting prices</b>, weekly <b>working hours</b>, <b>service areas</b> and <b>recent reviews</b>. The action buttons at the top right:</p>
+  <ul>
+    <li><b>♥</b> — add / remove from favourites.</li>
+    <li><span class="ui">Chat</span> — opens a private conversation with the technician in <b>Messages</b>. Use it to describe the problem before booking.</li>
+    <li><span class="ui">Book</span> — opens the booking form (13.4).</li>
+    <li><span class="ui">Book with AI</span> — lets the booking assistant prepare the request for you (13.5).</li>
+  </ul>
+
+  <h3>13.4 Booking a technician</h3>
+  <div class="fig-row">
+    <figure><img src="screenshots/14-booking-form.jpg" alt="Booking form" /><figcaption><b>Figure 8.</b> The booking form.</figcaption></figure>
+    <figure><img src="screenshots/15-booking-assistant.jpg" alt="Booking assistant" /><figcaption><b>Figure 9.</b> Building a booking with the AI assistant.</figcaption></figure>
+  </div>
+  <ol>
+    <li>Click <span class="ui">Book</span> on the technician's profile.</li>
+    <li>Choose the <b>Service</b> you need.</li>
+    <li>Pick the <b>Preferred date and time</b>. It must fall inside the technician's working hours and not clash with another booking — otherwise you'll see an error explaining why.</li>
+    <li>Enter the <b>Service city</b> and <b>Service address</b> (street, building, landmark).</li>
+    <li>Choose the expected <b>Duration</b>.</li>
+    <li>Describe the job in <b>What do you need help with?</b> and optionally attach a <b>photo or video</b>.</li>
+    <li>Click <span class="ui">Send booking request</span>. The technician is notified and the booking appears in <b>My bookings</b> as <span class="badge b-gold">Pending</span>.</li>
+  </ol>
+  <div class="callout note"><b class="t">How payment works</b><p>You do not pay when you book. The technician sets a <b>transport fee</b> when they accept, and you pay it through WorkMan with mobile money. The <b>service price</b> itself is agreed after the technician has diagnosed the problem.</p></div>
+
+  <h3>13.5 Booking with the AI assistant</h3>
+  <p><span class="ui">Book with AI</span> opens a short chat that asks four questions — <b>the problem</b>, <b>the address</b>, <b>when</b> you want the visit and <b>how urgent</b> it is. It then suggests the best matching service from that technician. You can attach a photo or video and click <span class="ui">Analyze image with AI</span> for a diagnosis (requires the AI key, Chapter 9). Click <span class="ui">Use this booking</span> to copy everything into the booking form, check it, and send it. <span class="ui">Start over</span> resets the conversation.</p>
+
+  <h3>13.6 My bookings</h3>
+  <figure>
+    <img src="screenshots/16-bookings.jpg" alt="My bookings" />
+    <figcaption><b>Figure 10.</b> My bookings — each card shows the technician, service, date, duration, transport fee, payment status and the actions available right now.</figcaption>
+  </figure>
+  <p>Use the tabs at the top to filter by status: <b>All, Pending, Accepted, In progress, Awaiting confirmation, Completed, Cancelled, Rejected</b>, and <b>Payments</b> (your payment history). The buttons on each card change with the booking's status:</p>
+  <table>
+    <tr><th style="width:24%">Status</th><th>What it means</th><th style="width:38%">Buttons you'll see</th></tr>
+    <tr><td><span class="badge b-gold">Pending</span></td><td>Waiting for the technician to answer.</td><td><span class="ui">Cancel request</span></td></tr>
+    <tr><td><span class="badge b-blue">Accepted</span></td><td>The technician accepted and set a transport fee.</td><td><span class="ui">Pay transport fee</span> → then <span class="ui">Release transport payment</span>; <span class="ui">Track technician</span></td></tr>
+    <tr><td><span class="badge b-blue">In progress</span></td><td>The technician has started the job.</td><td><span class="ui">Track technician</span></td></tr>
+    <tr><td><span class="badge b-gold">Awaiting confirmation</span></td><td>The technician marked the work as done.</td><td><span class="ui">Confirm completion</span></td></tr>
+    <tr><td><span class="badge b-green">Completed</span></td><td>You confirmed the job.</td><td>Star rating + review form; <span class="ui">Pay service fee</span>; <span class="ui">Clear booking</span></td></tr>
+    <tr><td><span class="badge b-grey">Cancelled</span> / <span class="badge b-red">Rejected</span></td><td>You cancelled, or the technician declined.</td><td><span class="ui">Clear booking</span></td></tr>
+  </table>
+  <p>Every card also has <span class="ui">Message</span> (chat with the technician) and <span class="ui">Report issue</span>.</p>
+
+  <h3>13.7 Paying the transport fee (escrow)</h3>
+  <figure>
+    <img src="screenshots/17-pay-transport.jpg" alt="Pay transport fee" style="max-height:105mm;object-fit:cover" />
+    <figcaption><b>Figure 11.</b> Paying the transport fee with mobile money.</figcaption>
+  </figure>
+  <ol>
+    <li>On an <span class="badge b-blue">Accepted</span> booking, click <span class="ui">Pay transport fee</span>.</li>
+    <li>Check the amount due, choose <b>MTN Mobile Money</b> or <b>Orange Money</b> and enter your mobile money number.</li>
+    <li>Click <span class="ui">Pay 1,500 FCFA</span> (the button shows the amount). The money is <b>held in escrow</b> by WorkMan — the technician can see it has been paid, but does not receive it yet.</li>
+    <li>When the technician arrives, click <span class="ui">Release transport payment</span>. The technician can now start the job.</li>
+  </ol>
+  <div class="callout warn"><b class="t">Development note</b><p>In local development the mobile money confirmation is <b>simulated</b> — no real money moves. In production it would be confirmed by the MTN MoMo / Orange Money webhook. Never share your mobile money PIN in chat.</p></div>
+
+  <h3>13.8 Live tracking</h3>
+  <figure>
+    <img src="screenshots/21-tracking.jpg" alt="Tracking" />
+    <figcaption><b>Figure 12.</b> Live tracking. (The map is grey in this screenshot only because it was captured offline; with internet access, OpenStreetMap streets are shown with both positions.)</figcaption>
+  </figure>
+  <p>For <span class="badge b-blue">Accepted</span> and <span class="badge b-blue">In progress</span> bookings, click <span class="ui">Track technician</span>. The map shows the technician's shared GPS position and, if you click <span class="ui">Share my location</span> and allow the browser's location prompt, your own position — the badge then shows how many kilometres apart you are. Click <span class="ui">Stop sharing</span> at any time; sharing is only possible while the booking is active.</p>
+
+  <h3>13.9 Confirming, paying the service and reviewing</h3>
+  <figure>
+    <img src="screenshots/18-bookings-completed.jpg" alt="Completed bookings" style="max-height:110mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 13.</b> The Completed tab, with the review form and service payment.</figcaption>
+  </figure>
+  <ol>
+    <li>When the technician marks the job done, the booking becomes <span class="badge b-gold">Awaiting confirmation</span>.</li>
+    <li>Check the work, then click <span class="ui">Confirm completion</span>. (If a transport fee exists, it must be paid and released first — the button stays disabled with a reminder until then.)</li>
+    <li>On the <span class="badge b-green">Completed</span> booking, click the <b>stars</b> (1–5), write a short comment and click <span class="ui">Submit review</span>. It appears on the technician's profile and updates their rating.</li>
+    <li>If the technician listed a starting price, <span class="ui">Pay service fee</span> lets you pay it through WorkMan the same way as the transport fee.</li>
+  </ol>
+  <p>The <b>Payments</b> tab lists every transport and service payment with its status: <span class="badge b-grey">Pending</span>, <span class="badge b-gold">Held in escrow</span>, <span class="badge b-green">Released</span> or <span class="badge b-green">Paid</span>.</p>
+
+  <h3>13.10 Reporting an issue</h3>
+  <div class="fig-row">
+    <figure><img src="screenshots/20-report-issue.jpg" alt="Report issue" /><figcaption><b>Figure 14.</b> Report an issue.</figcaption></figure>
+    <figure><img src="screenshots/19-payments.jpg" alt="Payments" /><figcaption><b>Figure 15.</b> The Payments tab.</figcaption></figure>
+  </div>
+  <p>Click <span class="ui">Report issue</span> on any booking, choose the type — <i>Inappropriate behavior, Fake or misleading profile, Payment issue, No-show at appointment, Safety concern</i> or <i>Other</i> — describe what happened and submit. The WorkMan administrators receive it in <b>Reports &amp; issues</b>.</p>
+
+  <h3>13.11 Favorites</h3>
+  <figure>
+    <img src="screenshots/22-favorites.jpg" alt="Favorites" style="max-height:95mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 16.</b> Saved technicians.</figcaption>
+  </figure>
+  <p>Every technician you hearted appears here with <span class="ui">View profile</span> and <span class="ui">Message</span> shortcuts. Click the heart again to remove them.</p>
+
+  <h3>13.12 Messages</h3>
+  <figure>
+    <img src="screenshots/23-messages.jpg" alt="Messages" />
+    <figcaption><b>Figure 17.</b> Private conversations between a client and a technician.</figcaption>
+  </figure>
+  <p>The left column lists your conversations; click one to read it. Type in <b>Write a message…</b> and press <span class="ui">Send</span> (or <kbd>Enter</kbd>). New conversations are started from a technician's profile (<span class="ui">Chat</span>), a favourite, or a booking (<span class="ui">Message</span>). Technicians use exactly the same page.</p>
+
+  <h3>13.13 Assistant</h3>
+  <figure>
+    <img src="screenshots/24-assistant.jpg" alt="Assistant" style="max-height:105mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 18.</b> The WorkMan help assistant.</figcaption>
+  </figure>
+  <p>The <span class="ui">Assistant</span> page answers common questions instantly — how to book, where your booking is, how to pay, how to cancel. Click a suggested question or type your own. (Technicians get questions about accepting jobs, availability and verification.)</p>
+
+  <h3>13.14 Settings &amp; identity verification</h3>
+  <figure>
+    <img src="screenshots/25-settings.jpg" alt="Settings" />
+    <figcaption><b>Figure 19.</b> Personal information and identity verification.</figcaption>
+  </figure>
+  <ul>
+    <li><b>Your information</b> — update your full name, phone, city and address, then click <span class="ui">Save changes</span>.</li>
+    <li><b>Identity verification</b> — upload a photo of your National ID card or passport (JPG, PNG or PDF, up to 5 MB) and click <span class="ui">Upload ID document</span>. The status changes from <i>Unverified</i> to <i>Pending</i> until reviewed.</li>
+  </ul>
+</section>
+
+<!-- ------------------------------------------------------------- TECH -->
+<section class="chapter" id="tech">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 14 · Role guide</div>
+    <h2>Technician <span class="serif">guide</span></h2>
+    <p class="intro">Set up your professional profile, get verified, and manage jobs from request to completion. Try it with <code>michael@workman.local</code>.</p>
+  </div>
+
+  <h3>14.1 Overview, verification status &amp; availability</h3>
+  <figure>
+    <img src="screenshots/30-tech-overview.jpg" alt="Technician overview" />
+    <figcaption><b>Figure 20.</b> The technician Overview with verification banner and availability switch.</figcaption>
+  </figure>
+  <ul>
+    <li>The <b>verification banner</b> tells you where you stand:
+      <span class="badge b-gold">Pending</span> — you are not visible to clients yet;
+      <span class="badge b-green">Verified ✓</span> — clients can find you;
+      <span class="badge b-red">Rejected</span> — review your profile and contact the administrator.</li>
+    <li>The <b>Available for new requests</b> switch controls whether you appear in client searches. Turn it off when you are busy or on leave.</li>
+    <li>Counters for pending requests, upcoming jobs, your rating and number of reviews, plus lists of <b>Pending requests</b> and <b>Next jobs</b>.</li>
+  </ul>
+  <figure>
+    <img src="screenshots/35-tech-pending.jpg" alt="Pending technician" style="max-height:80mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 21.</b> What a new technician sees while waiting for approval (<code>eric@workman.local</code>).</figcaption>
+  </figure>
+
+  <h3>14.2 Setting up your profile — <span class="ui">My profile</span></h3>
+  <p>Complete every section — a full profile gets approved faster and receives more bookings. Each section has its own save button.</p>
+  <figure>
+    <img src="screenshots/33-tech-profile.jpg" alt="Profile setup" />
+    <figcaption><b>Figure 22.</b> My professional profile.</figcaption>
+  </figure>
+  <table>
+    <tr><th style="width:26%">Section</th><th>What to do</th></tr>
+    <tr><td><b>Personal information</b></td><td>Full name, phone, years of experience and a short bio. Click <span class="ui">Save basics</span>.</td></tr>
+    <tr><td><b>Identity verification</b></td><td>Upload your National ID or passport (JPG, PNG, PDF, max 5 MB) with <span class="ui">Upload ID document</span>. An administrator checks it before approving you.</td></tr>
+    <tr><td><b>Services you offer</b></td><td>Pick a category, enter a service name (e.g. “Leak repair”) and a <b>starting price</b> in FCFA, then <span class="ui">Add service</span>. Remove a service with its ✕. If your trade is missing, type it in <b>Request a custom category</b> — an administrator will review it.</td></tr>
+    <tr><td><b>Where you work</b></td><td>Add each city and (optionally) neighbourhood you cover, e.g. Douala · Akwa, with <span class="ui">Add service area</span>. Clients filter by these.</td></tr>
+    <tr><td><b>Your weekly schedule</b></td><td>Switch each day on/off and set start and end times, then <span class="ui">Save working hours</span>. Clients can only book inside these hours.</td></tr>
+  </table>
+
+  <h3>14.3 Handling job requests — <span class="ui">Job requests</span></h3>
+  <figure>
+    <img src="screenshots/31-tech-jobs.jpg" alt="Job requests" />
+    <figcaption><b>Figure 23.</b> Job requests with Accept / Reject.</figcaption>
+  </figure>
+  <p>Filter with the tabs <b>All, Pending, Accepted, In progress, Awaiting confirmation, Completed</b>. Then work through each job:</p>
+  <ol>
+    <li><b>Accept or reject.</b> On a <span class="badge b-gold">Pending</span> request click <span class="ui">Accept</span>, enter the <b>transport fee (FCFA)</b> the client must pay before you travel, and confirm with <span class="ui">Accept booking</span>. Or click <span class="ui">Reject</span>.</li>
+    <li><b>Wait for payment.</b> The client pays the transport fee into escrow and releases it when you arrive. Until then the card shows “Waiting for the client to release the transport payment”.</li>
+    <li><b>Start the job.</b> Click <span class="ui">Start job</span> — the status becomes <span class="badge b-blue">In progress</span>.</li>
+    <li><b>Share your location</b> while travelling with <span class="ui">Share location</span> → <span class="ui">Share my location</span> (allow the browser prompt) so the client can follow you.</li>
+    <li><b>Finish.</b> Click <span class="ui">Mark work done</span>. The client confirms completion and can leave a review.</li>
+  </ol>
+  <figure>
+    <img src="screenshots/32-tech-accept.jpg" alt="Accept booking" style="max-height:100mm;object-fit:cover" />
+    <figcaption><b>Figure 24.</b> Setting the transport fee when accepting a booking.</figcaption>
+  </figure>
+  <p>Every job card also has <span class="ui">Message client</span> and <span class="ui">Report issue</span>.</p>
+
+  <h3>14.4 Service history</h3>
+  <figure>
+    <img src="screenshots/34-tech-history.jpg" alt="Service history" style="max-height:115mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 25.</b> Completed and past jobs with the ratings you received.</figcaption>
+  </figure>
+  <p><span class="ui">Service history</span> is a read-only record of your completed and cancelled jobs, with totals and your average rating. <span class="ui">Clear booking</span> removes a job from the list.</p>
+
+  <h3>14.5 Messages &amp; Assistant</h3>
+  <p>These work exactly as for clients (sections 13.12 and 13.13): chat privately with your clients, and ask the Technician assistant how to accept jobs, update availability or get verified.</p>
+</section>
+
+<!-- ------------------------------------------------------------- ADMIN -->
+<section class="chapter" id="admin">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 15 · Role guide</div>
+    <h2>Administrator <span class="serif">guide</span></h2>
+    <p class="intro">Keep the platform trustworthy. Log in with <code>admin@workman.local</code>.</p>
+  </div>
+
+  <h3>15.1 Overview</h3>
+  <figure>
+    <img src="screenshots/40-admin-overview.jpg" alt="Admin overview" />
+    <figcaption><b>Figure 26.</b> Platform statistics and administration shortcuts.</figcaption>
+  </figure>
+  <p>Counters for total users, clients, technicians, <b>pending verifications</b>, approved technicians, categories, bookings and reviews, followed by shortcuts to each administration page. <span class="ui">Review technicians</span> jumps straight to the queue.</p>
+
+  <h3>15.2 Verification — approving technicians</h3>
+  <figure>
+    <img src="screenshots/41-admin-verification.jpg" alt="Verification" style="max-height:110mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 27.</b> Reviewing a technician before they become visible.</figcaption>
+  </figure>
+  <ol>
+    <li>Open <span class="ui">Verification</span>. The <b>Pending</b> tab lists technicians waiting for review (tabs: All / Pending / Approved / Rejected).</li>
+    <li>Check the phone, experience, city and bio, and open the uploaded <b>identity document</b> (a warning is shown if none was uploaded).</li>
+    <li>Click <span class="ui">Approve</span> — the technician immediately appears in client searches — or <span class="ui">Reject</span>.</li>
+  </ol>
+
+  <h3>15.3 Users</h3>
+  <figure>
+    <img src="screenshots/42-admin-users.jpg" alt="Users" style="max-height:110mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 28.</b> Everyone on the platform.</figcaption>
+  </figure>
+  <p>Search by name or email and filter with the tabs <b>All / Clients / Technicians / Administrators</b>. Click <span class="ui">Deactivate</span> to block an account (the person can no longer log in) and <span class="ui">Reactivate</span> to restore it.</p>
+
+  <h3>15.4 Categories</h3>
+  <figure>
+    <img src="screenshots/43-admin-categories.jpg" alt="Categories" style="max-height:115mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 29.</b> Managing service categories.</figcaption>
+  </figure>
+  <ul>
+    <li><b>Create</b> a category with a name and optional description, then click <span class="ui">Create category</span>.</li>
+    <li>Categories requested by technicians show <span class="badge b-gold">Pending review</span> with <span class="ui">Approve</span> / <span class="ui">Reject</span>.</li>
+    <li><span class="ui">Deactivate</span> hides a category from clients without deleting it; <span class="ui">Activate</span> brings it back; the red <b>bin</b> icon deletes it.</li>
+  </ul>
+
+  <h3>15.5 Bookings, Reviews and Reports</h3>
+  <div class="fig-row">
+    <figure><img src="screenshots/44-admin-bookings.jpg" alt="Bookings" /><figcaption><b>Figure 30.</b> Monitoring all bookings.</figcaption></figure>
+    <figure><img src="screenshots/45-admin-reviews.jpg" alt="Reviews" /><figcaption><b>Figure 31.</b> Review moderation.</figcaption></figure>
+  </div>
+  <ul>
+    <li><span class="ui">Bookings</span> — a read-only view of every booking on the platform with client, technician, service, date, transport fee and status.</li>
+    <li><span class="ui">Reviews</span> — read all ratings and comments; click <span class="ui">Remove review</span> to delete an abusive or fake review (the technician's rating is recalculated).</li>
+    <li><span class="ui">Reports &amp; issues</span> — issues submitted by clients and technicians, with reporter, type, description, date and status. Write <b>Admin resolution notes</b> and click <span class="ui">Mark as Resolved</span>.</li>
+  </ul>
+  <figure>
+    <img src="screenshots/46-admin-reports.jpg" alt="Reports" style="max-height:105mm;object-fit:cover;object-position:top" />
+    <figcaption><b>Figure 32.</b> Reports &amp; issues.</figcaption>
+  </figure>
+</section>
+
+<!-- ------------------------------------------------------------- LIFECYCLE -->
+<section class="chapter" id="lifecycle">
+  <div class="chapter-head">
+    <div class="eyebrow">Chapter 16</div>
+    <h2>A booking from <span class="serif">start to finish</span></h2>
+    <p class="intro">Follow these steps with two browser windows — one as <code>client@workman.local</code>, one as <code>michael@workman.local</code> — to see the whole platform working together.</p>
+  </div>
+
+  <div class="flow-diagram">
+    <span class="s"><span class="badge b-gold">Pending</span></span><span class="a">→</span>
+    <span class="s"><span class="badge b-blue">Accepted</span></span><span class="a">→</span>
+    <span class="s"><span class="badge b-blue">In progress</span></span><span class="a">→</span>
+    <span class="s"><span class="badge b-gold">Awaiting confirmation</span></span><span class="a">→</span>
+    <span class="s"><span class="badge b-green">Completed</span></span><span class="a">→</span>
+    <span class="s">Review ★</span>
+  </div>
+  <p class="small">Side exits: a client can cancel while <b>Pending</b> (<span class="badge b-grey">Cancelled</span>); a technician can decline while <b>Pending</b> (<span class="badge b-red">Rejected</span>).</p>
+
+  <table>
+    <tr><th style="width:5%">#</th><th style="width:15%">Who</th><th>Action</th><th style="width:24%">Result</th></tr>
+    <tr><td>1</td><td>Client</td><td><span class="ui">Find a technician</span> → open Michael Kone's profile → <span class="ui">Chat</span> to describe the leak.</td><td>Conversation in Messages</td></tr>
+    <tr><td>2</td><td>Client</td><td><span class="ui">Book</span> → choose “Leak repair”, a time inside his working hours, address → <span class="ui">Send booking request</span>.</td><td><span class="badge b-gold">Pending</span>; technician notified</td></tr>
+    <tr><td>3</td><td>Technician</td><td><span class="ui">Job requests</span> → <span class="ui">Accept</span> → transport fee e.g. 1 500 FCFA → <span class="ui">Accept booking</span>.</td><td><span class="badge b-blue">Accepted</span>; client notified</td></tr>
+    <tr><td>4</td><td>Client</td><td><span class="ui">My bookings</span> → <span class="ui">Pay transport fee</span> → MTN MoMo / Orange Money → pay.</td><td>Payment <span class="badge b-gold">Held in escrow</span></td></tr>
+    <tr><td>5</td><td>Technician</td><td><span class="ui">Share location</span> → <span class="ui">Share my location</span> while travelling.</td><td>Client sees him on the map</td></tr>
+    <tr><td>6</td><td>Client</td><td><span class="ui">Track technician</span>; when he arrives → <span class="ui">Release transport payment</span>.</td><td>Payment <span class="badge b-green">Released</span></td></tr>
+    <tr><td>7</td><td>Technician</td><td><span class="ui">Start job</span>, diagnose, agree the service price, do the work → <span class="ui">Mark work done</span>.</td><td><span class="badge b-gold">Awaiting confirmation</span></td></tr>
+    <tr><td>8</td><td>Client</td><td><span class="ui">Confirm completion</span> → optionally <span class="ui">Pay service fee</span>.</td><td><span class="badge b-green">Completed</span></td></tr>
+    <tr><td>9</td><td>Client</td><td>Give 1–5 stars and a comment → <span class="ui">Submit review</span>.</td><td>Rating shown on profile</td></tr>
+    <tr><td>10</td><td>Admin</td><td>Sees the booking in <span class="ui">Bookings</span> and the review in <span class="ui">Reviews</span>; handles any report.</td><td>Platform stays trustworthy</td></tr>
+  </table>
+</section>
+
+<!-- ------------------------------------------------------------- APPENDIX A -->
+<section class="chapter" id="routes">
+  <div class="chapter-head">
+    <div class="eyebrow">Appendix A</div>
+    <h2>Page &amp; route map</h2>
+    <p class="intro">Every page of the website and who can open it. Type the address after <code>http://localhost:5173</code>.</p>
+  </div>
+  <table>
+    <tr><th style="width:34%">Address</th><th style="width:22%">Who</th><th>Page</th></tr>
+    <tr><td><code>/</code></td><td>Everyone</td><td>Home page</td></tr>
+    <tr><td><code>/login</code> · <code>/register</code></td><td>Everyone</td><td>Log in · Create an account</td></tr>
+    <tr><td><code>/dashboard</code></td><td>All signed-in users</td><td>Overview (different for each role)</td></tr>
+    <tr><td><code>/dashboard/discover</code></td><td>Client</td><td>Find a technician</td></tr>
+    <tr><td><code>/dashboard/technicians/:id</code></td><td>Client</td><td>Technician profile, chat, booking</td></tr>
+    <tr><td><code>/dashboard/bookings</code></td><td>Client</td><td>My bookings &amp; payments</td></tr>
+    <tr><td><code>/dashboard/favorites</code></td><td>Client</td><td>Favorites</td></tr>
+    <tr><td><code>/dashboard/settings</code></td><td>Client</td><td>Personal information &amp; ID upload</td></tr>
+    <tr><td><code>/dashboard/messages</code></td><td>Client, Technician</td><td>Messages</td></tr>
+    <tr><td><code>/dashboard/assistant</code></td><td>Client, Technician</td><td>Help assistant</td></tr>
+    <tr><td><code>/dashboard/tracking/:bookingId</code></td><td>Client, Technician</td><td>Live GPS tracking</td></tr>
+    <tr><td><code>/dashboard/jobs</code></td><td>Technician</td><td>Job requests</td></tr>
+    <tr><td><code>/dashboard/history</code></td><td>Technician</td><td>Service history</td></tr>
+    <tr><td><code>/dashboard/profile-setup</code></td><td>Technician</td><td>My professional profile</td></tr>
+    <tr><td><code>/dashboard/verification</code></td><td>Administrator</td><td>Technician verification</td></tr>
+    <tr><td><code>/dashboard/users</code></td><td>Administrator</td><td>Users</td></tr>
+    <tr><td><code>/dashboard/categories</code></td><td>Administrator</td><td>Service categories</td></tr>
+    <tr><td><code>/dashboard/platform-bookings</code></td><td>Administrator</td><td>All bookings</td></tr>
+    <tr><td><code>/dashboard/reviews</code></td><td>Administrator</td><td>Review moderation</td></tr>
+    <tr><td><code>/dashboard/reports</code></td><td>Administrator</td><td>Reports &amp; issues</td></tr>
+  </table>
+</section>
+
+<!-- ------------------------------------------------------------- APPENDIX B -->
+<section class="chapter" id="api">
+  <div class="chapter-head">
+    <div class="eyebrow">Appendix B</div>
+    <h2>Testing the API with Postman</h2>
+  </div>
+  <p>The <code>postman/</code> folder contains a collection that walks the whole platform — all three roles and the full booking lifecycle (32 requests, 83 assertions). With the backend running and freshly seeded:</p>
+<pre><span class="p">$ </span>php artisan migrate:fresh --seed       <span class="c"># in backend/ — start from clean demo data</span>
+<span class="p">$ </span>npx newman run postman/workman-api.postman_collection.json   <span class="c"># from the project root</span></pre>
+  <p>Or import <code>postman/workman-api.postman_collection.json</code> into the Postman app and use the Collection Runner. API requests authenticate with <code>Authorization: Bearer &lt;token&gt;</code>, where the token is returned by <code>POST /api/auth/login</code>. The full route list is in <code>backend/routes/api.php</code>.</p>
+  <div class="callout tip" style="margin-top:14px"><b class="t">Need help?</b><p>See the <code>README.md</code> files in the project root, <code>backend/</code>, <code>frontend/</code> and <code>postman/</code> for developer-level details.</p></div>
+</section>
+
+</body>
+</html>
