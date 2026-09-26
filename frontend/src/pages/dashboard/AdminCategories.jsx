@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { useToast } from '../../context/useToast'
@@ -13,6 +14,10 @@ export default function AdminCategories() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [categoryToDelete, setCategoryToDelete] = useState(null)
+  const [categoryToReject, setCategoryToReject] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [rejecting, setRejecting] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -83,16 +88,38 @@ export default function AdminCategories() {
     }
   }
 
-  const remove = async (id) => {
-    setError('')
+  const rejectCategory = async () => {
+    if (!categoryToReject) return
+    setRejecting(true)
     try {
-      await deleteCategory(id)
+      await updateCategory(categoryToReject.id, { approval_status: 'rejected' })
+      await load()
+      setCategoryToReject(null)
+      toast.success('Category rejected.')
+    } catch (err) {
+      const message = err.response?.data?.message || 'Unable to review the category.'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setRejecting(false)
+    }
+  }
+
+  const remove = async () => {
+    if (!categoryToDelete) return
+    setError('')
+    setDeleting(true)
+    try {
+      await deleteCategory(categoryToDelete.id)
       await load()
       toast.info('Category deleted.')
+      setCategoryToDelete(null)
     } catch (err) {
       const message = err.response?.data?.message || 'Unable to delete the category.'
       setError(message)
       toast.error(message)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -180,15 +207,36 @@ export default function AdminCategories() {
                       {category.approval_status === 'pending' && (
                         <>
                           <button className="btn btn-dark btn-sm" onClick={() => review(category, 'approved')}>Approve</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => review(category, 'rejected')}>Reject</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => setCategoryToReject(category)}>Reject</button>
                         </>
                       )}
                       <button className="btn btn-outline btn-sm" onClick={() => toggle(category)}>
                         {category.is_active ? 'Deactivate' : 'Activate'}
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => remove(category.id)}>
-                        <Icon name="trash" size={13} />
-                      </button>
+                      <div style={{ display: 'grid', justifyItems: 'end', gap: 4 }}>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          disabled={category.services_count > 0}
+                          aria-label={
+                            category.services_count > 0
+                              ? `${category.name} is used by existing services and cannot be deleted`
+                              : `Delete ${category.name}`
+                          }
+                          title={
+                            category.services_count > 0
+                              ? 'Deactivate this category instead; it is used by existing services.'
+                              : 'Delete category'
+                          }
+                          onClick={() => setCategoryToDelete(category)}
+                        >
+                          <Icon name="trash" size={13} />
+                        </button>
+                        {category.services_count > 0 && (
+                          <small className="results-count">
+                            Used by {category.services_count} service{category.services_count === 1 ? '' : 's'}; deactivate instead.
+                          </small>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -197,6 +245,23 @@ export default function AdminCategories() {
           </table>
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(categoryToDelete)}
+        title="Delete category?"
+        message={`Are you sure you want to delete “${categoryToDelete?.name}”? This action cannot be undone.`}
+        busy={deleting}
+        onCancel={() => setCategoryToDelete(null)}
+        onConfirm={remove}
+      />
+      <ConfirmDialog
+        open={Boolean(categoryToReject)}
+        title="Reject category?"
+        message={`Are you sure you want to reject “${categoryToReject?.name}”? It will remain unavailable to clients.`}
+        busy={rejecting}
+        confirmLabel="Reject category"
+        onCancel={() => setCategoryToReject(null)}
+        onConfirm={rejectCategory}
+      />
     </div>
   )
 }

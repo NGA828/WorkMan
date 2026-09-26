@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { diagnoseBookingImage, getApiErrorMessage } from '../../services/api'
 import Icon from '../Icon'
 import './AssistantChat.css'
 
@@ -46,6 +47,9 @@ export default function AssistantChat({ variant = 'floating' }) {
   const role = isProvider ? 'provider' : 'client'
   const [open, setOpen] = useState(variant !== 'floating')
   const [message, setMessage] = useState('')
+  const [image, setImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
+  const [sending, setSending] = useState(false)
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
@@ -57,21 +61,104 @@ export default function AssistantChat({ variant = 'floating' }) {
     },
   ])
   const endRef = useRef(null)
+  const imageInputRef = useRef(null)
+  const previewUrls = useRef([])
   const suggestions = role === 'provider' ? TECHNICIAN_SUGGESTIONS : CLIENT_SUGGESTIONS
+
+  useEffect(() => () => previewUrls.current.forEach((url) => URL.revokeObjectURL(url)), [])
+
+  useEffect(() => {
+    if (!image) {
+      setImagePreview('')
+      return undefined
+    }
+
+    const previewUrl = URL.createObjectURL(image)
+    setImagePreview(previewUrl)
+    previewUrls.current.push(previewUrl)
+    return () => URL.revokeObjectURL(previewUrl)
+  }, [image])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, open])
 
-  const send = (text = message) => {
+  const send = async (text = message) => {
     const trimmed = text.trim()
-    if (!trimmed) return
+    const attachment = image
+    if ((!trimmed && !attachment) || sending) return
+    const messageImageUrl = attachment ? URL.createObjectURL(attachment) : ''
+    if (messageImageUrl) previewUrls.current.push(messageImageUrl)
     setMessages((current) => [
       ...current,
-      { id: `${Date.now()}-user`, from: 'user', text: trimmed },
-      { id: `${Date.now()}-assistant`, from: 'assistant', text: getReply(trimmed, role) },
+      { id: `${Date.now()}-user`, from: 'user', text: trimmed, image: messageImageUrl },
     ])
     setMessage('')
+    setImage(null)
+    if (imageInputRef.current) imageInputRef.current.value = ''
+
+    if (!attachment) {
+      setMessages((current) => [
+        ...current,
+        { id: `${Date.now()}-assistant`, from: 'assistant', text: getReply(trimmed, role) },
+      ])
+      return
+    }
+
+    setSending(true)
+    try {
+      const { data } = await diagnoseBookingImage(
+        attachment,
+        trimmed || 'Describe what is visible and provide relevant WorkMan guidance.'
+      )
+      const diagnosis = data.diagnosis
+      const details = [
+        diagnosis.observations?.length ? `What I can see: ${diagnosis.observations.join('; ')}` : '',
+        diagnosis.questions?.length ? `Questions for a technician: ${diagnosis.questions.join('; ')}` : '',
+        diagnosis.safety_notes?.length ? `Safety notes: ${diagnosis.safety_notes.join('; ')}` : '',
+      ].filter(Boolean)
+      setMessages((current) => [
+        ...current,
+        {
+          id: `${Date.now()}-assistant`,
+          from: 'assistant',
+          text: `${diagnosis.category} may be the closest service category (${diagnosis.confidence} confidence). ${diagnosis.summary}${details.length ? `\n\n${details.join('\n\n')}` : ''}`,
+        },
+      ])
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: `${Date.now()}-assistant-error`,
+          from: 'assistant',
+          text: getApiErrorMessage(error, 'Image analysis could not be completed. Please try again.'),
+        },
+      ])
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const selectImage = (event) => {
+    const selected = event.target.files?.[0] || null
+    if (!selected) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(selected.type)) {
+      setMessages((current) => [
+        ...current,
+        { id: `${Date.now()}-assistant-error`, from: 'assistant', text: 'Choose a JPG, PNG, or WebP image.' },
+      ])
+      event.target.value = ''
+      return
+    }
+    if (selected.size > 10 * 1024 * 1024) {
+      setMessages((current) => [
+        ...current,
+        { id: `${Date.now()}-assistant-error`, from: 'assistant', text: 'Images must be 10 MB or smaller.' },
+      ])
+      event.target.value = ''
+      return
+    }
+    setImage(selected)
   }
 
   const title = role === 'provider' ? 'Technician assistant' : 'WorkMan assistant'
@@ -104,14 +191,17 @@ export default function AssistantChat({ variant = 'floating' }) {
 
       <div className="assistant-messages">
         {messages.map((item) => (
-          <div className={`assistant-message ${item.from}`} key={item.id}>{item.text}</div>
+          <div className={`assistant-message ${item.from}`} key={item.id}>
+            {item.image && <img className="assistant-message-image" src={item.image} alt="Uploaded image" />}
+            {item.text && <span>{item.text}</span>}
+          </div>
         ))}
         <div ref={endRef} />
       </div>
 
       <div className="assistant-suggestions">
         {suggestions.map((suggestion) => (
-          <button key={suggestion} onClick={() => send(suggestion)}>{suggestion}</button>
+          <button key={suggestion} disabled={sending} onClick={() => send(suggestion)}>{suggestion}</button>
         ))}
       </div>
 
@@ -122,10 +212,44 @@ export default function AssistantChat({ variant = 'floating' }) {
           placeholder={user?.name ? `Ask me anything, ${user.name.split(' ')[0]}` : 'Ask me anything'}
           aria-label="Message assistant"
         />
-        <button type="submit" aria-label="Send message" disabled={!message.trim()}>
+        <input
+          ref={imageInputRef}
+          className="assistant-image-input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={selectImage}
+          aria-label="Attach an image"
+        />
+        <button
+          type="button"
+          className="assistant-attach"
+          onClick={() => imageInputRef.current?.click()}
+          disabled={sending}
+          aria-label="Attach an image"
+          title="Attach an image"
+        >
+          <Icon name="plus" size={17} />
+        </button>
+        <button type="submit" aria-label="Send message" disabled={sending || (!message.trim() && !image)}>
           <Icon name="arrowRight" size={17} />
         </button>
       </form>
+      {image && (
+        <div className="assistant-image-preview">
+          <img src={imagePreview} alt="Selected image preview" />
+          <span>{image.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setImage(null)
+              if (imageInputRef.current) imageInputRef.current.value = ''
+            }}
+            aria-label="Remove selected image"
+          >
+            <Icon name="x" size={13} />
+          </button>
+        </div>
+      )}
 
       <p className="assistant-disclaimer">
         Need a person? <Link to="/dashboard/messages">Message support</Link>

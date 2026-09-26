@@ -38,7 +38,11 @@ return [
     'ai' => [
         'provider' => env('AI_PROVIDER', 'openrouter'),
         'key' => env('AI_API_KEY'),
-        'model' => env('AI_MODEL', 'google/gemini-2.0-flash-exp:free'),
+        'model' => env('AI_MODEL', 'qwen/qwen3.8-27b:free'),
+        'fallback_models' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', env('AI_FALLBACK_MODELS', 'google/gemma-4-26b-a4b-it:free,google/gemma-4-31b-it:free'))
+        ))),
         'ca_bundle' => env('AI_CA_BUNDLE'),
     ],
 

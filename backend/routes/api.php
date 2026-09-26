@@ -71,13 +71,16 @@ Route::middleware(['auth.api', 'throttle:api'])->group(function () {
     Route::post('/conversations', [MessagingController::class, 'create']);
     Route::get('/conversations/{conversation}/messages', [MessagingController::class, 'messages']);
     Route::post('/conversations/{conversation}/messages', [MessagingController::class, 'send']);
+    Route::get('/messages/{message}/attachment', [MessagingController::class, 'attachment'])
+        ->middleware('role:client,provider');
+    Route::post('/ai/diagnose-image', [AiDiagnosisController::class, 'diagnose'])
+        ->middleware('role:client,provider');
 
     /*
     | Client-only actions
     */
     Route::middleware('role:client')->group(function () {
         Route::post('/bookings', [BookingController::class, 'store']);
-        Route::post('/ai/diagnose-image', [AiDiagnosisController::class, 'diagnose']);
         Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
         Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm']);
         Route::post('/bookings/{booking}/release-transport', [BookingController::class, 'releaseTransport']);

@@ -50,6 +50,50 @@ function readJson(body) {
   }
 }
 
+function readMultipart(body, contentType) {
+  const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i)?.slice(1).find(Boolean)
+  if (!boundary) return { fields: {}, file: null }
+
+  const delimiter = Buffer.from(`--${boundary}`)
+  const separator = Buffer.from('\r\n\r\n')
+  const fields = {}
+  let file = null
+  let offset = 0
+
+  while (true) {
+    const start = body.indexOf(delimiter, offset)
+    if (start === -1) break
+    const partStart = start + delimiter.length
+    if (body.subarray(partStart, partStart + 2).toString() === '--') break
+    const contentStart = partStart + 2
+    const headerEnd = body.indexOf(separator, contentStart)
+    if (headerEnd === -1) break
+
+    const headers = body.subarray(contentStart, headerEnd).toString('utf8')
+    const nextBoundary = body.indexOf(delimiter, headerEnd + separator.length)
+    if (nextBoundary === -1) break
+    let value = body.subarray(headerEnd + separator.length, nextBoundary)
+    if (value.subarray(-2).toString() === '\r\n') value = value.subarray(0, -2)
+
+    const name = headers.match(/content-disposition:[^\r\n]*\bname="([^"]+)"/i)?.[1]
+    const filename = headers.match(/content-disposition:[^\r\n]*\bfilename="([^"]*)"/i)?.[1]
+    if (name && filename) {
+      file = {
+        name,
+        filename,
+        mime: headers.match(/content-type:\s*([^\r\n]+)/i)?.[1] || 'application/octet-stream',
+        data: value,
+      }
+    } else if (name) {
+      fields[name] = value.toString('utf8')
+    }
+
+    offset = nextBoundary
+  }
+
+  return { fields, file }
+}
+
 function send(res, status, payload) {
   const json = JSON.stringify(payload)
   res.writeHead(status, {
@@ -59,6 +103,17 @@ function send(res, status, payload) {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   })
   res.end(json)
+}
+
+function sendBinary(res, status, contentType, data) {
+  res.writeHead(status, {
+    'Content-Type': contentType,
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Cache-Control': 'private, no-store',
+  })
+  res.end(data)
 }
 
 const fail = (res, status, message) => send(res, status, { message })
@@ -548,18 +603,17 @@ const server = createServer((req, res) => {
 
   if (req.method === 'OPTIONS') return send(res, 204, {})
 
-  let body = ''
+  let body = Buffer.alloc(0)
   req.on('data', (chunk) => {
-    body += chunk
+    body = Buffer.concat([body, chunk])
   })
   req.on('end', () => {
-    // Handle multipart uploads (identity documents) by treating body as empty JSON
-    // and letting the handler create a fake path. The frontend sends FormData.
-    const isMultipart = (req.headers['content-type'] || '').includes('multipart/form-data')
-    const payload = isMultipart ? {} : readJson(body)
+    const contentType = req.headers['content-type'] || ''
+    const isMultipart = contentType.includes('multipart/form-data')
+    const multipart = isMultipart ? readMultipart(body, contentType) : { fields: {}, file: null }
+    const payload = isMultipart ? multipart.fields : readJson(body.toString('utf8'))
     const user = authUser(req)
-    // Pass raw body and headers for handlers that need it
-    handle(path, url, req, res, payload, { rawBody: body, headers: req.headers })
+    handle(path, url, req, res, payload, { file: multipart.file, headers: req.headers })
     console.log(
       `[mock-api] ${req.method} ${path || '/'} -> ${res.statusCode}${user ? ` (user ${user.id}: ${user.email})` : ' (anonymous)'}`
     )
@@ -718,6 +772,26 @@ function handle(path, url, req, res, payload, meta = {}) {
     })
     persist(db)
     return send(res, 200, { message: 'Signed out successfully.' })
+  }
+
+  if (method === 'POST' && path === '/ai/diagnose-image') {
+    if (!['client', 'provider'].includes(user.role)) return fail(res, 403, 'Forbidden.')
+    const image = meta.file
+    if (!image || image.name !== 'image') return fail(res, 422, 'An image is required.')
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(image.mime)) {
+      return fail(res, 422, 'Choose a JPG, PNG, or WebP image.')
+    }
+    if (image.data.length > 10 * 1024 * 1024) return fail(res, 422, 'Images must be 10 MB or smaller.')
+    return send(res, 200, {
+      diagnosis: {
+        category: 'General home maintenance',
+        confidence: 'low',
+        summary: 'The demo API accepts the image upload, but image analysis is available only when using the configured Laravel AI service.',
+        observations: [],
+        questions: [],
+        safety_notes: [],
+      },
+    })
   }
 
   if (method === 'GET' && path === '/profile') {
@@ -938,17 +1012,31 @@ function handle(path, url, req, res, payload, meta = {}) {
       const messages = db.messages
         .filter((item) => item.conversation_id === conversation.id)
         .sort((a, b) => a.created_at.localeCompare(b.created_at))
-        .map((item) => ({ ...item, sender: userShape(db.users.find((u) => u.id === item.sender_id)) }))
+        .map((item) => {
+          const { attachment_data, attachment_mime, ...message } = item
+          return {
+            ...message,
+            attachment_url: attachment_data ? `/api/messages/${item.id}/attachment` : null,
+            sender: userShape(db.users.find((u) => u.id === item.sender_id)),
+          }
+        })
       return send(res, 200, { messages })
     }
 
     if (method === 'POST') {
-      if (!payload.body) return fail(res, 422, 'The body field is required.')
+      const image = meta.file
+      if (!payload.body?.trim() && !image) return fail(res, 422, 'Write a message or attach an image before sending.')
+      if (image && !['image/jpeg', 'image/png', 'image/webp'].includes(image.mime)) {
+        return fail(res, 422, 'Choose a JPG, PNG, or WebP image.')
+      }
+      if (image && image.data.length > 10 * 1024 * 1024) return fail(res, 422, 'Images must be 10 MB or smaller.')
       const message = {
         id: nextId('message'),
         conversation_id: conversation.id,
         sender_id: userId,
-        body: payload.body,
+        body: payload.body || '',
+        attachment_data: image ? image.data.toString('base64') : null,
+        attachment_mime: image?.mime || null,
         read_at: null,
         created_at: now(),
         updated_at: now(),
@@ -956,8 +1044,27 @@ function handle(path, url, req, res, payload, meta = {}) {
       db.messages.push(message)
       conversation.last_message_at = message.created_at
       persist(db)
-      return send(res, 201, { message: { ...message, sender: userShape(user) } })
+      const { attachment_data, attachment_mime, ...messagePayload } = message
+      return send(res, 201, {
+        message: {
+          ...messagePayload,
+          attachment_url: image ? `/api/messages/${message.id}/attachment` : null,
+          sender: userShape(user),
+        },
+      })
     }
+  }
+
+  const messageAttachmentMatch = path.match(/^\/messages\/(\d+)\/attachment$/)
+  if (messageAttachmentMatch && method === 'GET') {
+    const message = db.messages.find((item) => item.id === Number(messageAttachmentMatch[1]))
+    if (!message?.attachment_data) return fail(res, 404, 'Not found.')
+    const conversation = db.conversations.find((item) => item.id === message.conversation_id)
+    const tech = conversation && db.technicians.find((item) => item.id === conversation.technician_profile_id)
+    if (!conversation || (conversation.client_id !== userId && tech?.user_id !== userId)) {
+      return fail(res, 403, 'Forbidden.')
+    }
+    return sendBinary(res, 200, message.attachment_mime, Buffer.from(message.attachment_data, 'base64'))
   }
 
   /* reports - any authenticated user can submit */
@@ -1350,10 +1457,12 @@ function handle(path, url, req, res, payload, meta = {}) {
       const booking = db.bookings.find((item) => item.id === Number(statusMatch[1]))
       if (!booking || booking.technician_profile_id !== tech?.id) return fail(res, 403, 'Forbidden.')
       const status = payload.status
+      const hasUnreleasedTransportFee =
+        Number(booking.transport_fee || 0) > 0 && booking.transport_payment_status !== 'released'
       const allowed = {
         accepted: booking.status === 'pending',
         rejected: booking.status === 'pending',
-        in_progress: booking.status === 'accepted',
+        in_progress: booking.status === 'accepted' && !hasUnreleasedTransportFee,
         done: ['accepted', 'in_progress'].includes(booking.status),
       }
       if (!allowed[status]) return fail(res, 422, 'This booking cannot move to that status right now.')
@@ -1485,7 +1594,11 @@ function handle(path, url, req, res, payload, meta = {}) {
     }
 
     if (method === 'GET' && path === '/admin/categories') {
-      return send(res, 200, { categories: clone(db.categories) })
+      const categories = db.categories.map((category) => ({
+        ...category,
+        services_count: db.services.filter((service) => service.service_category_id === category.id).length,
+      }))
+      return send(res, 200, { categories: clone(categories) })
     }
 
     if (method === 'POST' && path === '/admin/categories') {

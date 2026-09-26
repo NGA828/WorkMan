@@ -5,6 +5,12 @@ import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/useToast'
 import './AuthPage.css'
 
+const demoAccounts = [
+  { label: 'Administrator', email: 'admin@workman.local', password: 'password' },
+  { label: 'Client', email: 'client@workman.local', password: 'password' },
+  { label: 'Technician', email: 'michael@workman.local', password: 'password' },
+]
+
 export default function AuthPage({ mode = 'login' }) {
   const isRegister = mode === 'register'
   const { login, register } = useAuth()
@@ -27,16 +33,13 @@ export default function AuthPage({ mode = 'login' }) {
 
   const update = (key) => (event) => setForm({ ...form, [key]: event.target.value })
 
-  const submit = async (event) => {
-    event.preventDefault()
+  const authenticate = async (request, registering = false) => {
     setError('')
     setLoading(true)
     try {
-      const user = isRegister
-        ? await register(form)
-        : await login({ email: form.email, password: form.password })
+      const user = await request()
       const name = user?.name?.split(' ')[0] || ''
-      toast.success(isRegister ? `Welcome to WorkMan, ${name}!` : `Welcome back, ${name}!`)
+      toast.success(registering ? `Welcome to WorkMan, ${name}!` : `Welcome back, ${name}!`)
       navigate(from, { replace: true })
     } catch (err) {
       const message = err.response?.data?.message || 'Something went wrong. Please try again.'
@@ -45,6 +48,14 @@ export default function AuthPage({ mode = 'login' }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const submit = (event) => {
+    event.preventDefault()
+    return authenticate(
+      () => (isRegister ? register(form) : login({ email: form.email, password: form.password })),
+      isRegister
+    )
   }
 
   return (
@@ -176,6 +187,27 @@ export default function AuthPage({ mode = 'login' }) {
             )}
             {!loading && <span className="auth-submit-arrow">↗</span>}
           </button>
+
+          {!isRegister && import.meta.env.DEV && (
+            <section className="demo-login" aria-label="Demo accounts">
+              <h2>Quick demo login</h2>
+              <p>Choose an account to sign in instantly. Password: <code>password</code></p>
+              <div className="demo-login-options">
+                {demoAccounts.map((account) => (
+                  <button
+                    key={account.email}
+                    className="demo-login-option"
+                    type="button"
+                    disabled={loading}
+                    onClick={() => authenticate(() => login(account))}
+                  >
+                    <b>{account.label}</b>
+                    <span>{account.email}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
         </form>
 
         <p className="auth-switch">

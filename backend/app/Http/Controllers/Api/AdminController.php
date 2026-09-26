@@ -81,7 +81,7 @@ class AdminController extends Controller
      */
     public function categories(): JsonResponse
     {
-        return response()->json(['categories' => ServiceCategory::latest()->get()]);
+        return response()->json(['categories' => ServiceCategory::withCount('services')->latest()->get()]);
     }
 
     public function createCategory(Request $request): JsonResponse

@@ -30,12 +30,16 @@ class AiDiagnosisController extends Controller
         $image = $data['image'];
         $mime = $image->getMimeType();
         $imageData = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($image->getRealPath()));
+        $audienceGuidance = $request->user()->role === 'provider'
+            ? 'The user is a service provider. Focus on neutral visible observations and practical questions to ask the client before confirming the service, scope, or price.'
+            : 'The user is a client. Explain the visible issue in plain language and suggest safe next steps for arranging help from a qualified technician.';
         $prompt = <<<PROMPT
 You are WorkMan's cautious home-services triage assistant. Analyze the attached problem image.
 Suggest one likely service category from: Plumbing, Electrical work, Phone repair, Appliance repair,
 Construction, Cleaning, Car repair, or Other. Do not make a final diagnosis, do not claim certainty,
 and do not recommend dangerous repairs. Mention visible observations, ask useful questions for a
-qualified technician, and flag safety concerns. The client's description is:
+qualified technician, and flag safety concerns. Tailor the response to the user's role: {$audienceGuidance}
+The client's description is:
 {$data['problem']}
 
 Return ONLY valid JSON with this exact shape:
@@ -59,15 +63,22 @@ PROMPT;
             }
         }
 
-        $response = $http
+        $request = $http
             ->withToken($apiKey)
             ->acceptJson()
             ->withHeaders($provider === 'openrouter' ? [
                 'HTTP-Referer' => config('app.url'),
                 'X-Title' => config('app.name', 'WorkMan'),
-            ] : [])
-            ->post($endpoint, [
-                'model' => $model,
+            ] : []);
+
+        $models = array_values(array_unique(array_filter([
+            $model,
+            ...($provider === 'openrouter' ? config('services.ai.fallback_models', []) : []),
+        ])));
+
+        foreach ($models as $candidateModel) {
+            $response = $request->post($endpoint, [
+                'model' => $candidateModel,
                 'temperature' => 0.2,
                 'max_tokens' => 700,
                 'messages' => [[
@@ -79,6 +90,11 @@ PROMPT;
                 ]],
             ]);
 
+            if (!$response->failed() || $response->status() !== 429) {
+                break;
+            }
+        }
+
         if ($response->failed()) {
             report(new \RuntimeException('AI diagnosis provider failed: ' . $response->body()));
             $providerMessage = data_get($response->json(), 'error.message');
@@ -86,7 +102,7 @@ PROMPT;
                 401 => 'The AI provider rejected the API key. Check AI_API_KEY in backend/.env.',
                 402 => 'The AI provider has no available credits or free quota for this key.',
                 404 => 'The configured AI model is unavailable. Check AI_MODEL in backend/.env.',
-                429 => 'The AI provider rate limit was reached. Please try again shortly.',
+                429 => 'All configured AI vision models are temporarily rate-limited. Please try again shortly or configure an individual provider key to avoid shared free-tier limits.',
                 default => $providerMessage
                     ? 'The AI provider rejected the request: ' . \Illuminate\Support\Str::limit($providerMessage, 180)
                     : 'The AI diagnosis provider is temporarily unavailable.',

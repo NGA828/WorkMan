@@ -169,7 +169,7 @@ class BookingController extends Controller
         $allowed = match ($data['status']) {
             'accepted', 'rejected' => $booking->status === 'pending',
             'in_progress' => $booking->status === 'accepted'
-                && (!$booking->transport_fee || $booking->transport_payment_status === 'released'),
+                && ((float) $booking->transport_fee <= 0 || $booking->transport_payment_status === 'released'),
             'done' => $booking->status === 'in_progress',
             default => false,
         };

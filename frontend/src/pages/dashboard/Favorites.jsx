@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { RatingPill } from '../../components/StarRating'
@@ -15,6 +16,7 @@ export default function Favorites() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [chatId, setChatId] = useState(null)
+  const [favoriteToRemove, setFavoriteToRemove] = useState(null)
 
   useEffect(() => {
     getFavorites()
@@ -23,12 +25,14 @@ export default function Favorites() {
       .finally(() => setLoading(false))
   }, [])
 
-  const unfavorite = async (id) => {
+  const unfavorite = async () => {
+    const id = favoriteToRemove.id
     setBusyId(id)
     try {
       await removeFavorite(id)
       setFavorites((list) => list.filter((technician) => technician.id !== id))
       toast.info('Removed from your favorites.')
+      setFavoriteToRemove(null)
     } catch {
       toast.error('Could not update your favorites. Please try again.')
     } finally {
@@ -72,13 +76,14 @@ export default function Favorites() {
   }
 
   return (
-    <div className="discover-grid">
-      {favorites.map((technician, index) => (
-        <article
-          className="tech-card animate-rise"
-          key={technician.id}
-          style={{ animationDelay: `${Math.min(index, 12) * 50}ms` }}
-        >
+    <div>
+      <div className="discover-grid">
+        {favorites.map((technician, index) => (
+          <article
+            className="tech-card animate-rise"
+            key={technician.id}
+            style={{ animationDelay: `${Math.min(index, 12) * 50}ms` }}
+          >
           <div className="tech-card-top">
             <Avatar name={technician.user?.name} size={46} />
             <div className="tech-card-meta">
@@ -90,7 +95,7 @@ export default function Favorites() {
             <button
               type="button"
               className="fav-btn active"
-              onClick={() => unfavorite(technician.id)}
+              onClick={() => setFavoriteToRemove(technician)}
               disabled={busyId === technician.id}
               aria-label="Remove from favorites"
               title="Remove from favorites"
@@ -128,8 +133,18 @@ export default function Favorites() {
               <Icon name="chat" size={13} /> {chatId === technician.id ? 'Opening…' : 'Chat'}
             </button>
           </div>
-        </article>
-      ))}
+          </article>
+        ))}
+      </div>
+      <ConfirmDialog
+        open={Boolean(favoriteToRemove)}
+        title="Remove favorite?"
+        message={`Remove ${favoriteToRemove?.user?.name || 'this technician'} from your favorites?`}
+        busy={busyId !== null}
+        confirmLabel="Remove"
+        onCancel={() => setFavoriteToRemove(null)}
+        onConfirm={unfavorite}
+      />
     </div>
   )
 }

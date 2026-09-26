@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Avatar from '../Avatar'
 import Icon from '../Icon'
+import Modal from '../Modal'
 import NotificationBell from './NotificationBell'
 import './DashboardLayout.css'
 
@@ -69,6 +70,8 @@ export default function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   const nav = isClient ? CLIENT_NAV : isProvider ? PROVIDER_NAV : ADMIN_NAV
   const { title, sub } = useMemo(() => pageTitle(location.pathname), [location.pathname])
@@ -76,8 +79,14 @@ export default function DashboardLayout() {
   const roleLabel = isClient ? 'Client' : isProvider ? 'Technician' : 'Administrator'
 
   const handleLogout = async () => {
-    await logout()
-    navigate('/')
+    setLoggingOut(true)
+    try {
+      await logout()
+      navigate('/')
+    } finally {
+      setLoggingOut(false)
+      setLogoutConfirmationOpen(false)
+    }
   }
 
   return (
@@ -113,7 +122,12 @@ export default function DashboardLayout() {
               <b>{user?.name}</b>
               <small>{roleLabel}</small>
             </div>
-            <button className="sidebar-logout" onClick={handleLogout} title="Sign out" aria-label="Sign out">
+            <button
+              className="sidebar-logout"
+              onClick={() => setLogoutConfirmationOpen(true)}
+              title="Sign out"
+              aria-label="Sign out"
+            >
               <Icon name="logout" size={16} />
             </button>
           </div>
@@ -144,6 +158,28 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      <Modal
+        open={logoutConfirmationOpen}
+        title="Sign out?"
+        onClose={() => setLogoutConfirmationOpen(false)}
+        footer={
+          <>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setLogoutConfirmationOpen(false)}
+              disabled={loggingOut}
+            >
+              Cancel
+            </button>
+            <button className="btn btn-danger btn-sm" onClick={handleLogout} disabled={loggingOut}>
+              {loggingOut ? 'Signing out…' : 'Sign out'}
+            </button>
+          </>
+        }
+      >
+        <p>Are you sure you want to sign out of your account?</p>
+      </Modal>
     </div>
   )
 }

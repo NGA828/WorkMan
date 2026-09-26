@@ -962,6 +962,27 @@
   color: var(--ink);
 }
 
+.bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.message-image {
+  display: block;
+  max-width: min(280px, 100%);
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 9px;
+  margin-top: 4px;
+}
+
+.message-image-loading,
+.message-image-error {
+  display: block;
+  font-size: 11px;
+  opacity: .7;
+}
+
 .bubble.mine {
   align-self: flex-end;
   background: var(--ink);
@@ -990,6 +1011,26 @@
   background: var(--panel);
 }
 
+.message-image-input {
+  display: none;
+}
+
+.thread-form .message-attach {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--cream);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.thread-form .message-attach:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
 .thread-form input {
   flex: 1;
   border: 1px solid var(--line);
@@ -1000,6 +1041,38 @@
   outline: none;
 }
 
+.thread-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 12px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.thread-image-preview img {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 7px;
+}
+
+.thread-image-preview span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-image-preview button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
 .thread-form input:focus {
   border-color: var(--coral);
   box-shadow: 0 0 0 3px rgba(239, 118, 94, 0.12);

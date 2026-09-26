@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import Icon from '../../components/Icon'
 import { VerificationBadge } from '../../components/StatusBadge'
 import { useToast } from '../../context/useToast'
@@ -61,6 +62,8 @@ export default function ProviderProfileSetup() {
   const [locationMsg, setLocationMsg] = useState('')
   const [hoursMsg, setHoursMsg] = useState('')
   const [error, setError] = useState('')
+  const [itemToRemove, setItemToRemove] = useState(null)
+  const [removingItem, setRemovingItem] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -157,13 +160,26 @@ export default function ProviderProfileSetup() {
     }
   }
 
-  const removeService = async (id) => {
+  const removeItem = async () => {
+    setRemovingItem(true)
     try {
-      await removeProviderService(id)
-      setServices((list) => list.filter((service) => service.id !== id))
-      toast.info('Service removed.')
+      if (itemToRemove.type === 'service') {
+        await removeProviderService(itemToRemove.id)
+        setServices((list) => list.filter((service) => service.id !== itemToRemove.id))
+        toast.info('Service removed.')
+      } else {
+        await removeProviderLocation(itemToRemove.id)
+        setLocations((list) => list.filter((location) => location.id !== itemToRemove.id))
+        toast.info('Service area removed.')
+      }
+      setItemToRemove(null)
     } catch {
-      toast.error('Unable to remove the service.')
+      const message = itemToRemove.type === 'service'
+        ? 'Unable to remove the service.'
+        : 'Unable to remove the service area.'
+      toast.error(message)
+    } finally {
+      setRemovingItem(false)
     }
   }
 
@@ -181,16 +197,6 @@ export default function ProviderProfileSetup() {
       const message = err.response?.data?.message || 'Unable to add the service area.'
       setError(message)
       toast.error(message)
-    }
-  }
-
-  const removeLocation = async (id) => {
-    try {
-      await removeProviderLocation(id)
-      setLocations((list) => list.filter((location) => location.id !== id))
-      toast.info('Service area removed.')
-    } catch {
-      toast.error('Unable to remove the service area.')
     }
   }
 
@@ -364,7 +370,7 @@ export default function ProviderProfileSetup() {
               </div>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 {service.starting_price && <b>{formatCurrency(service.starting_price)}+</b>}
-                <button className="fav-btn" onClick={() => removeService(service.id)} title="Remove service">
+                <button className="fav-btn" onClick={() => setItemToRemove({ type: 'service', id: service.id, label: service.name })} title="Remove service">
                   <Icon name="trash" size={14} />
                 </button>
               </div>
@@ -443,7 +449,7 @@ export default function ProviderProfileSetup() {
               <Icon name="pin" size={12} />
               {location.city}
               {location.neighborhood ? ` — ${location.neighborhood}` : ''}
-              <button onClick={() => removeLocation(location.id)} title="Remove area">
+              <button onClick={() => setItemToRemove({ type: 'location', id: location.id, label: `${location.city}${location.neighborhood ? ` — ${location.neighborhood}` : ''}` })} title="Remove area">
                 <Icon name="x" size={12} />
               </button>
             </span>
@@ -519,6 +525,15 @@ export default function ProviderProfileSetup() {
           Save working hours
         </button>
       </SectionCard>
+      <ConfirmDialog
+        open={Boolean(itemToRemove)}
+        title={`Remove ${itemToRemove?.type === 'service' ? 'service' : 'service area'}?`}
+        message={`Are you sure you want to remove “${itemToRemove?.label}”?`}
+        busy={removingItem}
+        confirmLabel="Remove"
+        onCancel={() => setItemToRemove(null)}
+        onConfirm={removeItem}
+      />
     </div>
   )
 }

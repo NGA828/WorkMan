@@ -143,8 +143,19 @@ export const createConversation = (technicianProfileId, bookingId = null) =>
   })
 export const getMessages = (conversationId) =>
   api.get(`/conversations/${conversationId}/messages`)
-export const sendMessage = (conversationId, body) =>
-  api.post(`/conversations/${conversationId}/messages`, { body })
+export const sendMessage = (conversationId, body, image = null) => {
+  if (!image) return api.post(`/conversations/${conversationId}/messages`, { body })
+
+  const formData = new FormData()
+  if (body) formData.append('body', body)
+  formData.append('image', image)
+  return api.post(`/conversations/${conversationId}/messages`, formData, {
+    headers: { 'Content-Type': undefined },
+    transformRequest: [(data) => data],
+  })
+}
+export const getMessageAttachment = (messageId) =>
+  api.get(`/messages/${messageId}/attachment`, { responseType: 'blob' })
 
 /* ------------------------------------------------------------- notifications */
 export const getNotifications = () => api.get('/notifications')

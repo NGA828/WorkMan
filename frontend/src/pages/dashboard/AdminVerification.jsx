@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import Avatar from '../../components/Avatar'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { VerificationBadge } from '../../components/StatusBadge'
@@ -20,6 +21,7 @@ export default function AdminVerification() {
   const [tab, setTab] = useState('pending')
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [technicianToReject, setTechnicianToReject] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -40,6 +42,22 @@ export default function AdminVerification() {
       await load()
       if (status === 'approved') toast.success('Technician approved — they are now visible to clients.')
       else toast.info('Technician rejected. They will not appear in client search.')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to update the verification status.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const rejectTechnician = async () => {
+    if (!technicianToReject) return
+    const id = technicianToReject.id
+    setBusyId(id)
+    try {
+      await verifyTechnician(id, 'rejected')
+      await load()
+      setTechnicianToReject(null)
+      toast.info('Technician rejected. They will not appear in client search.')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to update the verification status.')
     } finally {
@@ -139,7 +157,7 @@ export default function AdminVerification() {
                 <button
                   className="btn btn-danger btn-sm"
                   disabled={busyId === technician.id || technician.verification_status === 'rejected'}
-                  onClick={() => verify(technician.id, 'rejected')}
+                  onClick={() => setTechnicianToReject(technician)}
                 >
                   Reject
                 </button>
@@ -153,6 +171,15 @@ export default function AdminVerification() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(technicianToReject)}
+        title="Reject technician?"
+        message={`Are you sure you want to reject ${technicianToReject?.user?.name || 'this technician'}? They will not appear in client search.`}
+        busy={busyId !== null}
+        confirmLabel="Reject technician"
+        onCancel={() => setTechnicianToReject(null)}
+        onConfirm={rejectTechnician}
+      />
     </div>
   )
 }

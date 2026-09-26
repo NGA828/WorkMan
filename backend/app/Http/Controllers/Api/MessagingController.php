@@ -8,9 +8,10 @@ use App\Models\Message;
 use App\Models\TechnicianProfile;
 use App\Models\User;
 use App\Models\WorkmanNotification;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MessagingController extends Controller
@@ -78,12 +79,13 @@ class MessagingController extends Controller
             ->whereNull('read_at')
             ->update(['read_at' => Carbon::now()]);
 
-        return response()->json([
-            'messages' => $conversation->messages()
-                ->with('sender:id,name,role')
-                ->oldest()
-                ->get(),
-        ]);
+        $messages = $conversation->messages()
+            ->with('sender:id,name,role')
+            ->oldest()
+            ->get()
+            ->map(fn (Message $message) => $this->messagePayload($message));
+
+        return response()->json(['messages' => $messages]);
     }
 
     /**
@@ -94,12 +96,26 @@ class MessagingController extends Controller
         $this->authorizeConversation($request, $conversation);
 
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['nullable', 'string', 'max:5000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
         ]);
+
+        if (blank($data['body'] ?? null) && !$request->hasFile('image')) {
+            return response()->json([
+                'message' => 'Write a message or attach an image before sending.',
+            ], 422);
+        }
+
+        $attachmentPath = $request->file('image')?->store('chat-attachments', 'local');
+        if ($request->hasFile('image') && !$attachmentPath) {
+            report(new \RuntimeException('Unable to store private message image attachment.'));
+            return response()->json(['message' => 'The image could not be saved. Please try again.'], 500);
+        }
 
         $message = $conversation->messages()->create([
             'sender_id' => $request->user()->id,
-            'body' => $data['body'],
+            'body' => $data['body'] ?? '',
+            'attachment_path' => $attachmentPath,
         ]);
 
         $conversation->update(['last_message_at' => $message->created_at]);
@@ -123,8 +139,42 @@ class MessagingController extends Controller
         }
 
         return response()->json([
-            'message' => $message->load('sender:id,name,role'),
+            'message' => $this->messagePayload($message->load('sender:id,name,role')),
         ], 201);
+    }
+
+    /**
+     * Stream a message image only to a participant in its conversation.
+     */
+    public function attachment(Request $request, Message $message)
+    {
+        $this->authorizeConversation($request, $message->conversation);
+
+        abort_unless(
+            $message->attachment_path && Storage::disk('local')->exists($message->attachment_path),
+            404
+        );
+
+        return Storage::disk('local')->response(
+            $message->attachment_path,
+            null,
+            ['Cache-Control' => 'private, no-store']
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function messagePayload(Message $message): array
+    {
+        $attachmentUrl = $message->attachment_path
+            ? url('/api/messages/' . $message->id . '/attachment')
+            : null;
+
+        return array_merge(
+            $message->makeHidden('attachment_path')->toArray(),
+            ['attachment_url' => $attachmentUrl]
+        );
     }
 
     private function authorizeConversation(Request $request, Conversation $conversation): void

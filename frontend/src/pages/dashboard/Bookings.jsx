@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import Modal from '../../components/Modal'
@@ -188,6 +189,7 @@ export default function Bookings() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
+  const [bookingToClear, setBookingToClear] = useState(null)
 
   const [payBooking, setPayBooking] = useState(null)
   const [payPurpose, setPayPurpose] = useState('transport_fee')
@@ -253,13 +255,15 @@ export default function Bookings() {
       toast.success('Booking request cancelled.')
     })
 
-  const clear = async (id) => {
-    if (!window.confirm('Clear this booking from your history?')) return
+  const clear = async () => {
+    setError('')
+    const id = bookingToClear.id
     setBusyId(id)
     try {
       await clearBooking(id)
       setBookings((list) => list.filter((booking) => booking.id !== id))
       toast.success('Booking cleared from your history.')
+      setBookingToClear(null)
     } catch (err) {
       const message = err.response?.data?.message || 'Unable to clear this booking.'
       setError(message)
@@ -417,7 +421,7 @@ export default function Bookings() {
           key="clear"
           className="btn btn-ghost btn-sm"
           disabled={busyId === booking.id}
-          onClick={() => clear(booking.id)}
+          onClick={() => setBookingToClear(booking)}
         >
           <Icon name="x" size={14} /> Clear booking
         </button>
@@ -632,6 +636,15 @@ export default function Bookings() {
         onClose={() => setReportBooking(null)}
         reportedUserId={reportBooking?.technician?.user?.id ?? reportBooking?.technician?.user_id}
         bookingId={reportBooking?.id}
+      />
+      <ConfirmDialog
+        open={Boolean(bookingToClear)}
+        title="Clear booking?"
+        message="Are you sure you want to clear this booking from your history?"
+        busy={busyId !== null}
+        confirmLabel="Clear booking"
+        onCancel={() => setBookingToClear(null)}
+        onConfirm={clear}
       />
     </div>
   )

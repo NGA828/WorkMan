@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import { RatingPill } from '../../components/StarRating'
@@ -16,6 +17,7 @@ export default function Discover() {
   const [favorites, setFavorites] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyFavorite, setBusyFavorite] = useState(null)
+  const [favoriteToRemove, setFavoriteToRemove] = useState(null)
 
   const filters = useMemo(
     () => ({
@@ -61,18 +63,32 @@ export default function Discover() {
   const favoriteIds = useMemo(() => new Set(favorites.map((technician) => technician.id)), [favorites])
 
   const toggleFavorite = async (technicianId, isFavorite) => {
+    if (isFavorite) {
+      setFavoriteToRemove(items.find((technician) => technician.id === technicianId))
+      return
+    }
+
     setBusyFavorite(technicianId)
     try {
-      if (isFavorite) {
-        await removeFavorite(technicianId)
-        setFavorites((list) => list.filter((technician) => technician.id !== technicianId))
-        toast.info('Removed from your favorites.')
-      } else {
-        await addFavorite(technicianId)
-        const { data } = await getFavorites()
-        setFavorites(data.technicians || [])
-        toast.success('Saved to your favorites.')
-      }
+      await addFavorite(technicianId)
+      const { data } = await getFavorites()
+      setFavorites(data.technicians || [])
+      toast.success('Saved to your favorites.')
+    } catch {
+      toast.error('Could not update your favorites. Please try again.')
+    } finally {
+      setBusyFavorite(null)
+    }
+  }
+
+  const unfavorite = async () => {
+    const technicianId = favoriteToRemove.id
+    setBusyFavorite(technicianId)
+    try {
+      await removeFavorite(technicianId)
+      setFavorites((list) => list.filter((technician) => technician.id !== technicianId))
+      toast.info('Removed from your favorites.')
+      setFavoriteToRemove(null)
     } catch {
       toast.error('Could not update your favorites. Please try again.')
     } finally {
@@ -225,6 +241,15 @@ export default function Discover() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(favoriteToRemove)}
+        title="Remove favorite?"
+        message={`Remove ${favoriteToRemove?.user?.name || 'this technician'} from your favorites?`}
+        busy={busyFavorite !== null}
+        confirmLabel="Remove"
+        onCancel={() => setFavoriteToRemove(null)}
+        onConfirm={unfavorite}
+      />
     </div>
   )
 }

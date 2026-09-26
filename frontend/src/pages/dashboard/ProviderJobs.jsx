@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import Modal from '../../components/Modal'
@@ -32,6 +33,7 @@ export default function ProviderJobs() {
   const [transportFee, setTransportFee] = useState('')
   const [acceptBusy, setAcceptBusy] = useState(false)
   const [acceptError, setAcceptError] = useState('')
+  const [bookingToDecline, setBookingToDecline] = useState(null)
 
   const [reportBooking, setReportBooking] = useState(null)
 
@@ -65,6 +67,25 @@ export default function ProviderJobs() {
       await updateBookingStatus(id, payload)
       await load()
       if (STATUS_TOAST[payload.status]) toast.success(STATUS_TOAST[payload.status])
+    } catch (err) {
+      const message = err.response?.data?.message || 'That action could not be completed.'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const declineBooking = async () => {
+    if (!bookingToDecline) return
+    const id = bookingToDecline.id
+    setBusyId(id)
+    setError('')
+    try {
+      await updateBookingStatus(id, { status: 'rejected' })
+      await load()
+      setBookingToDecline(null)
+      toast.success(STATUS_TOAST.rejected)
     } catch (err) {
       const message = err.response?.data?.message || 'That action could not be completed.'
       setError(message)
@@ -198,9 +219,9 @@ export default function ProviderJobs() {
                     <button
                       className="btn btn-danger btn-sm"
                       disabled={busyId === booking.id}
-                      onClick={() => run(booking.id, { status: 'rejected' })}
+                      onClick={() => setBookingToDecline(booking)}
                     >
-                      Reject
+                      Decline
                     </button>
                   </>
                 )}
@@ -298,7 +319,15 @@ export default function ProviderJobs() {
           </form>
         )}
       </Modal>
-
+      <ConfirmDialog
+        open={Boolean(bookingToDecline)}
+        title="Decline booking?"
+        message={`Are you sure you want to decline ${bookingToDecline?.client?.name || 'this booking'}'s request for ${bookingToDecline?.service?.name || 'this service'}? The client will be notified.`}
+        busy={busyId !== null}
+        confirmLabel="Decline booking"
+        onCancel={() => setBookingToDecline(null)}
+        onConfirm={declineBooking}
+      />
       <ReportIssueModal
         open={Boolean(reportBooking)}
         onClose={() => setReportBooking(null)}

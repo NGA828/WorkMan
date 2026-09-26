@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Avatar from '../../components/Avatar'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import StarRating from '../../components/StarRating'
@@ -14,14 +15,16 @@ export default function ProviderHistory() {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [bookingToClear, setBookingToClear] = useState(null)
 
-  const clear = async (id) => {
-    if (!window.confirm('Clear this booking from your history?')) return
+  const clear = async () => {
+    const id = bookingToClear.id
     setBusyId(id)
     try {
       await clearBooking(id)
       setBookings((list) => list.filter((booking) => booking.id !== id))
       toast.success('Booking cleared from your history.')
+      setBookingToClear(null)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to clear this booking.')
     } finally {
@@ -151,7 +154,7 @@ export default function ProviderHistory() {
                   <button
                     className="btn btn-ghost btn-sm"
                     disabled={busyId === booking.id}
-                    onClick={() => clear(booking.id)}
+                    onClick={() => setBookingToClear(booking)}
                   >
                     <Icon name="x" size={14} /> Clear booking
                   </button>
@@ -161,6 +164,15 @@ export default function ProviderHistory() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(bookingToClear)}
+        title="Clear booking?"
+        message="Are you sure you want to clear this booking from your history?"
+        busy={busyId !== null}
+        confirmLabel="Clear booking"
+        onCancel={() => setBookingToClear(null)}
+        onConfirm={clear}
+      />
     </div>
   )
 }

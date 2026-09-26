@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import Avatar from '../../components/Avatar'
-import BookingAssistant from '../../components/BookingAssistant'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import Modal from '../../components/Modal'
@@ -30,7 +30,6 @@ export default function TechnicianProfile() {
   const [loading, setLoading] = useState(true)
 
   const [bookOpen, setBookOpen] = useState(false)
-  const [assistantOpen, setAssistantOpen] = useState(false)
   const [serviceId, setServiceId] = useState('')
   const [scheduledAt, setScheduledAt] = useState('')
   const [serviceCity, setServiceCity] = useState('')
@@ -42,6 +41,8 @@ export default function TechnicianProfile() {
   const [bookingMessage, setBookingMessage] = useState(null)
   const [bookingError, setBookingError] = useState(null)
   const [heartBeat, setHeartBeat] = useState(false)
+  const [favoriteConfirmationOpen, setFavoriteConfirmationOpen] = useState(false)
+  const [removingFavorite, setRemovingFavorite] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -71,20 +72,33 @@ export default function TechnicianProfile() {
   }, [technician])
 
   const toggleFavorite = async () => {
+    if (favorite) {
+      setFavoriteConfirmationOpen(true)
+      return
+    }
+
     setHeartBeat(true)
     setTimeout(() => setHeartBeat(false), 420)
     try {
-      if (favorite) {
-        await removeFavorite(id)
-        setFavorite(false)
-        toast.info('Removed from your favorites.')
-      } else {
-        await addFavorite(id)
-        setFavorite(true)
-        toast.success('Saved to your favorites.')
-      }
+      await addFavorite(id)
+      setFavorite(true)
+      toast.success('Saved to your favorites.')
     } catch {
       toast.error('Could not update your favorites. Please try again.')
+    }
+  }
+
+  const unfavorite = async () => {
+    setRemovingFavorite(true)
+    try {
+      await removeFavorite(id)
+      setFavorite(false)
+      setFavoriteConfirmationOpen(false)
+      toast.info('Removed from your favorites.')
+    } catch {
+      toast.error('Could not update your favorites. Please try again.')
+    } finally {
+      setRemovingFavorite(false)
     }
   }
 
@@ -207,9 +221,6 @@ export default function TechnicianProfile() {
           <button type="button" className="btn btn-dark" onClick={() => setBookOpen(true)}>
             <Icon name="calendar" size={15} /> Book
           </button>
-          <button type="button" className="btn btn-outline" onClick={() => setAssistantOpen(true)}>
-            <Icon name="star" size={15} /> Book with AI
-          </button>
         </div>
       </div>
 
@@ -286,9 +297,6 @@ export default function TechnicianProfile() {
         onClose={() => setBookOpen(false)}
       >
         <form onSubmit={submitBooking} style={{ display: 'grid', gap: 14 }}>
-          <button type="button" className="btn btn-outline" onClick={() => setAssistantOpen(true)}>
-            Build this booking with the WorkMan assistant
-          </button>
           <p>
             Send a booking request with your preferred date and time. The technician confirms
             availability and the transport fee is paid through WorkMan after acceptance.
@@ -387,29 +395,15 @@ export default function TechnicianProfile() {
           </button>
         </form>
       </Modal>
-      <Modal
-        open={assistantOpen}
-        title="Build your booking"
-        onClose={() => setAssistantOpen(false)}
-        width={520}
-      >
-        <BookingAssistant
-          services={services}
-          onClose={() => setAssistantOpen(false)}
-          onApply={(draft) => {
-            setServiceId(String(draft.serviceId))
-            setServiceCity(draft.serviceCity)
-            setServiceAddress(draft.serviceAddress)
-            setScheduledAt(draft.scheduledAt)
-            setNotes(draft.notes)
-            setBookingAttachment(draft.attachment)
-            setBookingMessage(null)
-            setBookingError(null)
-            setBookOpen(true)
-            setAssistantOpen(false)
-          }}
-        />
-      </Modal>
+      <ConfirmDialog
+        open={favoriteConfirmationOpen}
+        title="Remove favorite?"
+        message={`Remove ${technician.user?.name || 'this technician'} from your favorites?`}
+        busy={removingFavorite}
+        confirmLabel="Remove"
+        onCancel={() => setFavoriteConfirmationOpen(false)}
+        onConfirm={unfavorite}
+      />
     </div>
   )
 }

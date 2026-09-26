@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Message extends Model
 {
-    protected $fillable = ['conversation_id', 'sender_id', 'body', 'read_at'];
+    protected $fillable = ['conversation_id', 'sender_id', 'body', 'attachment_path', 'read_at'];
 
     protected $casts = [
         'read_at' => 'datetime',

@@ -46,6 +46,16 @@ Seeded by both the Laravel seeder and the mock API (password: `password`):
 | Technician (Carpentry, verified) | `samuel@workman.local` |
 | Technician (Gas, pending verification) | `eric@workman.local` |
 
+In local development, the login form also has quick-login buttons for the
+administrator, client, and verified technician accounts. Select one to sign in
+immediately; each uses the shared `password` shown above. These buttons are not
+included in production builds.
+
+Conversation messages can include a JPG, PNG, or WebP image up to 10 MB. Images
+are stored privately and can only be retrieved by conversation participants.
+The assistant accepts the same image types and uses the configured Laravel
+vision provider to analyze them; the mock API only simulates that response.
+
 ## Structure
 
 ```

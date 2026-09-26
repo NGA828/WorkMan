@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import Avatar from '../../components/Avatar'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Icon from '../../components/Icon'
 import StarRating from '../../components/StarRating'
@@ -14,6 +15,7 @@ export default function AdminReviews() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
+  const [reviewToDelete, setReviewToDelete] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -27,13 +29,14 @@ export default function AdminReviews() {
     load()
   }, [load])
 
-  const remove = async (id) => {
-    setBusyId(id)
+  const remove = async () => {
+    setBusyId(reviewToDelete.id)
     setError('')
     try {
-      await deleteReview(id)
-      setReviews((list) => list.filter((review) => review.id !== id))
+      await deleteReview(reviewToDelete.id)
+      setReviews((list) => list.filter((review) => review.id !== reviewToDelete.id))
       toast.success('Review removed.')
+      setReviewToDelete(null)
     } catch (err) {
       const message = err.response?.data?.message || 'Unable to remove the review.'
       setError(message)
@@ -90,7 +93,7 @@ export default function AdminReviews() {
                 <button
                   className="btn btn-danger btn-sm"
                   disabled={busyId === review.id}
-                  onClick={() => remove(review.id)}
+                  onClick={() => setReviewToDelete(review)}
                 >
                   <Icon name="trash" size={13} /> Remove review
                 </button>
@@ -99,6 +102,15 @@ export default function AdminReviews() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={Boolean(reviewToDelete)}
+        title="Remove review?"
+        message="Are you sure you want to remove this review? This action cannot be undone."
+        busy={busyId !== null}
+        confirmLabel="Remove review"
+        onCancel={() => setReviewToDelete(null)}
+        onConfirm={remove}
+      />
     </div>
   )
 }
