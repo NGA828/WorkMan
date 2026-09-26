@@ -1,0 +1,16 @@
+{
+  "name": "workman-user-guide-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "screenshots": "node capture-screenshots.mjs",
+    "pdf": "node build-pdf.mjs"
+  },
+  "dependencies": {
+    "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/dm-serif-display": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^24.0.0"
+  }
+}

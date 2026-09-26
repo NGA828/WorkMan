@@ -12,6 +12,10 @@ The platform has three roles, each with its own dashboard:
 | **Technician** | Build a professional profile (services, service areas, working hours), pass admin verification, accept/reject bookings, set transport fees, share live GPS location, manage availability |
 | **Administrator** | Verify technician ID & profile information, manage service categories, monitor bookings & reviews, moderate the platform |
 
+## User guide
+
+📘 **[docs/user-guide/WorkMan-User-Guide.pdf](docs/user-guide/WorkMan-User-Guide.pdf)** is a step-by-step guide. It covers starting the database, backend and frontend, and then walks through the application for each role, with screenshots.
+
 ## Repository layout
 
 ```
